@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+    <add key="zenmeter" value="https://gitlab.com/api/v4/groups/66021780/-/packages/nuget/index.json" />
+  </packageSources>
+  <packageSourceCredentials>
+    <zenmeter>
+      <add key="Username" value="&lt;package-registry-username&gt;" />
+      <add key="ClearTextPassword" value="&lt;package-registry-password&gt;" />
+    </zenmeter>
+  </packageSourceCredentials>
+  <packageSourceMapping>
+    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+    <packageSource key="zenmeter">
+      <package pattern="Zenmeter.*" />
+    </packageSource>
+  </packageSourceMapping>
+</configuration>

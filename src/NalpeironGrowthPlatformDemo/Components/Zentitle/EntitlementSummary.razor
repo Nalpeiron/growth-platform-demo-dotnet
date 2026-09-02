@@ -1,0 +1,52 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Zentitle
+
+<section class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm lg:col-span-2">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Entitlement</h2>
+            <p class="mt-2 text-lg font-bold text-slate-900">@View.PlanName</p>
+            <p class="mt-1 text-sm text-slate-500">
+                @if (View.IsPerpetual)
+                {
+                    <span>Perpetual license — no expiry date.</span>
+                }
+                else if (View.ExpiryDate is { } expiry)
+                {
+                    <span>Active until @expiry.ToString("MMM d, yyyy").</span>
+                }
+                else
+                {
+                    <span>Not activated yet — record a usage to activate the entitlement.</span>
+                }
+                @if (View.ActivationDate is { } activated)
+                {
+                    <span class="text-slate-400"> · Activated @activated.ToString("MMM d, yyyy")</span>
+                }
+            </p>
+        </div>
+        <StatusBadge Status="@View.Status" />
+    </div>
+
+    @if (View.CustomerUrl is not null || View.EntitlementUrl is not null)
+    {
+        <div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-4 text-sm font-semibold text-indigo-600">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Open in Zentitle</span>
+            @if (View.CustomerUrl is not null)
+            {
+                <a href="@View.CustomerUrl" target="_blank" rel="noopener" class="hover:text-indigo-700">Customer ↗</a>
+            }
+            @if (View.EntitlementUrl is not null)
+            {
+                <a href="@View.EntitlementUrl" target="_blank" rel="noopener" class="hover:text-indigo-700">Entitlement details ↗</a>
+            }
+            @if (View.ActivityLogUrl is not null)
+            {
+                <a href="@View.ActivityLogUrl" target="_blank" rel="noopener" class="hover:text-indigo-700">Activity log ↗</a>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public WorkspaceView View { get; set; } = null!;
+}

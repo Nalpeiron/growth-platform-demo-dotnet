@@ -1,0 +1,203 @@
+@page "/elevate"
+@page "/elevate/{BillingProvider}"
+@implements IDisposable
+@inject IElevateDemo Demo
+@inject NavigationManager Nav
+@inject Microsoft.Extensions.Options.IOptions<DemoProductsOptions> ProductsOptions
+@inject PersistentComponentState ApplicationState
+@inject IZentitleBillingProviderRegistry BillingProviders
+
+<PageTitle>Nalpeiron Growth Platform Demo Account — Pricing</PageTitle>
+
+<TopBar/>
+
+<main class="mx-auto max-w-6xl px-6 py-16">
+    <div class="mx-auto max-w-2xl text-center">
+        <p class="text-sm font-semibold uppercase tracking-widest text-indigo-600">Pricing</p>
+        @if (BillingLogoPath is { } billingLogoPath)
+        {
+            <div class="mt-4 flex justify-center">
+                <img src="@billingLogoPath" alt="@_billingSystem.DisplayName()"
+                     class="h-7 w-auto max-w-[170px] object-contain"/>
+            </div>
+        }
+        <h1 class="mt-3 text-5xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-6xl">Take control of
+            your productivity</h1>
+        <p class="mt-5 text-lg text-slate-500">Start small and upgrade as you grow.</p>
+
+        @if (AvailableBillingPeriods.Count > 1)
+        {
+            <div class="mt-8 inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm" role="tablist"
+                 aria-label="Billing period">
+                @foreach (var billingPeriod in AvailableBillingPeriods)
+                {
+                    <a href="@($"{DemoRoutes.ZentitlePricingFor(_billingSystem)}?period={billingPeriod.ToSlug()}")"
+                       class="rounded-full px-5 py-2 text-sm font-semibold transition @(CurrentPeriod == billingPeriod ? "bg-indigo-600 text-white shadow" : "text-slate-500 hover:text-slate-900")">
+                        @BillingPeriodLabel(billingPeriod)
+                    </a>
+                }
+            </div>
+        }
+    </div>
+
+    @if (_error is not null)
+    {
+        <p class="mx-auto mt-10 max-w-xl rounded-lg bg-rose-50 px-4 py-3 text-center text-sm text-rose-700">@_error</p>
+    }
+    else if (_loading)
+    {
+        <div class="mt-10 rounded-lg border border-slate-200 bg-white p-6 text-sm font-medium text-slate-500 shadow-sm">
+            Loading pricing...
+        </div>
+    }
+    else
+    {
+        <div class="mt-14 grid items-stretch gap-8 md:grid-cols-3">
+            @foreach (var edition in _editions)
+            {
+                <ZentitleOfferingCard Edition="edition" Period="@CurrentPeriod" SelectedBillingSystem="_billingSystem"
+                                      TrialBillingSystem="@TrialBillingSystem"
+                                      PriceSource="@CurrentCapabilities.PriceSource"
+                                      IsFeatured="IsFeatured(edition)"/>
+            }
+        </div>
+    }
+
+    <div class="mt-6">
+        <a role="button" href="@DemoRoutes.Products"
+           class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            Back to products
+        </a>
+    </div>
+</main>
+
+@code {
+    [SupplyParameterFromQuery] public string? Period { get; set; }
+    [Parameter] public string? BillingProvider { get; set; }
+    private string StateKey => $"zentitle-pricing-editions-{_billingSystem.ToSlug()}";
+
+    private IReadOnlyList<EditionPricing> _editions = [];
+    private string? _error;
+    private bool _loading = true;
+    private PersistingComponentStateSubscription _persistingSubscription;
+    private BillingSystem _billingSystem = BillingSystem.None;
+    private BillingSystem? _loadedBillingSystem;
+
+    private string? BillingLogoPath =>
+        !CurrentCapabilities.UsesExternalCheckout
+            ? null
+            : ProductsOptions.Value.Items
+                .FirstOrDefault(product => string.Equals(product.Key, "zentitle", StringComparison.OrdinalIgnoreCase))
+                ?.Variants.FirstOrDefault(variant => variant.BillingSystem == _billingSystem)
+                ?.LogoPath;
+
+    private IReadOnlyList<BillingPeriod> AvailableBillingPeriods =>
+        CurrentCapabilities.SupportedPaidPeriods;
+
+    private BillingPeriod CurrentPeriod =>
+        CurrentCapabilities.NormalizePaidPeriod(BillingPeriods.FromSlug(Period));
+
+    private ZentitleBillingCapabilities CurrentCapabilities =>
+        BillingProviders.GetCapabilities(_billingSystem);
+
+    private BillingSystem TrialBillingSystem =>
+        CurrentCapabilities.SupportsTrialCheckout ? _billingSystem : BillingSystem.None;
+
+    protected override void OnParametersSet()
+    {
+        var routedBillingSystem = DemoRoutes.ZentitleBillingSystemForRoute(
+            new Uri(Nav.Uri).AbsolutePath,
+            BillingProvider);
+        if (routedBillingSystem is null || BillingProviders.Find(routedBillingSystem.Value) is null)
+        {
+            // A provider route Zentitle does not serve yet - fall back to the default provider
+            // instead of rendering pricing that cannot be purchased.
+            _billingSystem = BillingSystem.None;
+            var target = DemoRoutes.ZentitlePricingFor(BillingSystem.None);
+            if (!string.IsNullOrWhiteSpace(Period))
+            {
+                target += $"?period={Uri.EscapeDataString(Period)}";
+            }
+
+            Nav.NavigateTo(target, replace: true);
+            return;
+        }
+
+        _billingSystem = routedBillingSystem.Value;
+
+        var requestedPeriod = BillingPeriods.FromSlug(Period);
+        var normalizedPeriod = CurrentCapabilities.NormalizePaidPeriod(requestedPeriod);
+        var normalizedPeriodSlug = normalizedPeriod.ToSlug();
+        if (!string.IsNullOrWhiteSpace(Period) &&
+            !string.Equals(Period, normalizedPeriodSlug, StringComparison.OrdinalIgnoreCase))
+        {
+            Nav.NavigateTo(
+                $"{DemoRoutes.ZentitlePricingFor(_billingSystem)}?period={normalizedPeriodSlug}",
+                replace: true);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Carry the prerendered pricing over to the interactive phase so the page doesn't blank out
+        // and re-fetch when the circuit connects.
+        _persistingSubscription = ApplicationState.RegisterOnPersisting(PersistEditions);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedBillingSystem == _billingSystem)
+        {
+            return;
+        }
+
+        _loadedBillingSystem = _billingSystem;
+        _editions = [];
+        _error = null;
+        _loading = true;
+
+        if (ApplicationState.TryTakeFromJson<IReadOnlyList<EditionPricing>>(StateKey, out var restored)
+            && restored is { Count: > 0 })
+        {
+            _editions = restored;
+            _loading = false;
+            return;
+        }
+
+        try
+        {
+            _editions = await Demo.GetPricing(_billingSystem, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load pricing from Zentitle: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task PersistEditions()
+    {
+        if (_editions.Count > 0)
+        {
+            ApplicationState.PersistAsJson(StateKey, _editions);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistingSubscription.Dispose();
+
+    private bool IsFeatured(EditionPricing edition) =>
+        string.Equals(edition.EditionName, "Premium", StringComparison.OrdinalIgnoreCase);
+
+    private static string BillingPeriodLabel(BillingPeriod period) => period switch
+    {
+        BillingPeriod.Yearly => "Yearly billing",
+        BillingPeriod.Perpetual => "Perpetual",
+        _ => period.ToString()
+    };
+
+}

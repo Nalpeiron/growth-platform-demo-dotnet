@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+.env.*
+**/appsettings.Local.json
+**/bin
+**/obj
+artifacts
+nuget.config
+TestResults

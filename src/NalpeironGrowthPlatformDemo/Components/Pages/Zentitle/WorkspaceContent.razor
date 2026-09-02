@@ -1,0 +1,290 @@
+@inject IElevateDemo Demo
+@inject NavigationManager Nav
+@inject BrowserStorage Storage
+
+@if (_view is not null)
+{
+    <ActionErrorToast Title="@_actionErrorTitle" Message="@_actionError" OnClose="ClearActionError"/>
+
+    <main class="mx-auto max-w-5xl px-6 py-16">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-widest text-indigo-600">Customer workspace</p>
+                <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">@_view.CustomerName workspace</h1>
+            </div>
+            <span
+                class="mt-2 rounded-full bg-indigo-50 px-4 py-1.5 text-sm font-semibold text-indigo-700">@_view.EditionName</span>
+        </div>
+
+        <div class="mt-10 grid gap-8 lg:grid-cols-2">
+            <EntitlementSummary View="_view"/>
+
+            <!-- Usage count -->
+            <section class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm lg:col-span-2">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Usage count features</h2>
+                    @if (_view.UsageLimitReached && _view.CanUpgrade)
+                    {
+                        <SpinnerButton Variant="soft-indigo" OnClick="UpgradeAsync"
+                                       Busy="@(_busy == "upgrade")" Disabled="@IsBusy" BusyLabel="Upgrading…">
+                            @(_view.IsTrial
+                                ? $"Upgrade trial to paid — {_view.NextEditionName}"
+                                : $"Change offering — upgrade to {_view.NextEditionName}")
+                        </SpinnerButton>
+                    }
+                </div>
+
+                <div class="mt-5 space-y-3">
+                    @if (_view.UsageCountFeatures.Count == 0)
+                    {
+                        <p class="text-sm text-slate-400">No usage count features on this edition.</p>
+                    }
+                    @foreach (var feature in _view.UsageCountFeatures)
+                    {
+                        <ZentitleUsageCountFeatureRow @key="feature.Key"
+                                                      Feature="feature"
+                                                      IsBusy="IsBusy"
+                                                      BusyAction="_busy"
+                                                      OnCheckout="amount => CheckoutAsync(feature.Key, amount)"/>
+                    }
+                </div>
+            </section>
+
+            <!-- Element pool -->
+            <section class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm lg:col-span-2">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Element pool features</h2>
+                <div class="mt-5 space-y-3">
+                    @if (_view.ElementPoolFeatures.Count == 0)
+                    {
+                        <p class="text-sm text-slate-400">No element pool features on this edition.</p>
+                    }
+                    @foreach (var feature in _view.ElementPoolFeatures)
+                    {
+                        <ZentitleElementPoolFeatureRow @key="feature.Key"
+                                                       Feature="feature"
+                                                       IsBusy="IsBusy"
+                                                       BusyAction="_busy"
+                                                       OnCheckout="amount => CheckoutAsync(feature.Key, amount)"
+                                                       OnReturn="amount => ReturnAsync(feature.Key, amount)"/>
+                    }
+                </div>
+            </section>
+
+            <BooleanFeatureGrid Features="_view.BooleanFeatures"/>
+
+            <AdminLogPanel Refs="_view.Refs" Events="_view.Events"/>
+        </div>
+    </main>
+}
+else if (!_loaded)
+{
+    <main class="mx-auto max-w-5xl px-6 py-16">
+        <p class="text-sm text-slate-400">Loading workspace…</p>
+    </main>
+}
+
+@code {
+    private WorkspaceView? _view;
+    private bool _loaded;
+    private string? _actionError;
+    private string _actionErrorTitle = "Action failed";
+    private string? _sessionId;
+
+    // Identifies the action currently in flight (e.g. "consume-<key>", "return-<key>", "upgrade").
+    // Drives the inline spinner and disables every submit button while a request is running —
+    // this replaces the old App.razor pending-button JavaScript.
+    private string? _busy;
+
+    private bool IsBusy => _busy is not null;
+
+    // The session id lives in localStorage, reachable only via JS interop once the component is
+    // interactive — hence OnAfterRenderAsync rather than OnInitializedAsync.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _sessionId = await Storage.GetAsync(SessionStorageKey.Zentitle);
+        await LoadAsync();
+        _loaded = true;
+
+        if (_view is null)
+        {
+            Nav.NavigateTo(DemoRoutes.ZentitlePricingFor(BillingSystem.None));
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _view = string.IsNullOrEmpty(_sessionId)
+            ? null
+            : await Demo.GetWorkspace(_sessionId, CancellationToken.None);
+    }
+
+    private async Task CheckoutAsync(string featureKey, int amount)
+    {
+        if (string.IsNullOrEmpty(_sessionId) || IsBusy)
+        {
+            return;
+        }
+
+        if (TryBuildUsageLimitError(featureKey, amount, out var message))
+        {
+            SetActionError("Usage limit exceeded", message);
+            return;
+        }
+
+        _busy = $"consume-{featureKey}";
+        try
+        {
+            var result = await Demo.CheckoutFeature(_sessionId, featureKey, amount, CancellationToken.None);
+            SetActionError(result.Action);
+            await ApplyFeatureResult(result);
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private async Task ReturnAsync(string featureKey, int amount)
+    {
+        if (string.IsNullOrEmpty(_sessionId) || IsBusy)
+        {
+            return;
+        }
+
+        _busy = $"return-{featureKey}";
+        try
+        {
+            var result = await Demo.ReturnFeature(_sessionId, featureKey, amount, CancellationToken.None);
+            SetActionError(result.Action);
+            await ApplyFeatureResult(result);
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private async Task UpgradeAsync()
+    {
+        if (string.IsNullOrEmpty(_sessionId) || IsBusy)
+        {
+            return;
+        }
+
+        _busy = "upgrade";
+        try
+        {
+            var result = await Demo.Upgrade(_sessionId, CancellationToken.None);
+            SetActionError(result);
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private bool TryBuildUsageLimitError(string featureKey, int amount, out string message)
+    {
+        message = string.Empty;
+        var feature = _view?.UsageCountFeatures
+            .Concat(_view.ElementPoolFeatures)
+            .FirstOrDefault(candidate =>
+                string.Equals(candidate.Key, featureKey, StringComparison.OrdinalIgnoreCase));
+        if (feature is null || feature.Value <= 0)
+        {
+            return false;
+        }
+
+        var remaining = Math.Max(0, feature.Value - feature.Used);
+        if (amount <= remaining)
+        {
+            return false;
+        }
+
+        message = $"{feature.Name} has {remaining:N0} unit(s) available, but this action requested {amount:N0}.";
+        return true;
+    }
+
+    private async Task ApplyFeatureResult(ZentitleFeatureActionResult result)
+    {
+        if (_view is null || result.Feature is null)
+        {
+            if (result.Succeeded ||
+                string.Equals(
+                    result.Code,
+                    ZentitleFeatureActionCodes.InsufficientBalance,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                await LoadAsync();
+            }
+
+            return;
+        }
+
+        var usage = ReplaceFeature(_view.UsageCountFeatures, result.Feature);
+        var pool = ReplaceFeature(_view.ElementPoolFeatures, result.Feature);
+        _view = _view with
+        {
+            UsageCountFeatures = usage,
+            ElementPoolFeatures = pool,
+            UsageLimitReached = usage.Any(feature => feature.Value > 0 && feature.Used >= feature.Value),
+            Refs = _view.Refs with { ActivationId = result.ActivationId ?? _view.Refs.ActivationId },
+            Events = result.Events ?? _view.Events
+        };
+    }
+
+    private static IReadOnlyList<WorkspaceFeature> ReplaceFeature(
+        IReadOnlyList<WorkspaceFeature> features,
+        WorkspaceFeature updated) =>
+        features
+            .Select(feature => string.Equals(feature.Key, updated.Key, StringComparison.OrdinalIgnoreCase)
+                ? updated with
+                {
+                    Name = feature.Name,
+                    Value = updated.Value > 0 ? updated.Value : feature.Value
+                }
+                : feature)
+            .ToList();
+
+    private void SetActionError(DemoActionResult result)
+    {
+        if (string.IsNullOrWhiteSpace(result.Message))
+        {
+            ClearActionError();
+            return;
+        }
+
+        var title = IsInsufficientBalance(result.Code, result.Message)
+            ? "Usage limit exceeded"
+            : "Action failed";
+        SetActionError(title, result.Message);
+    }
+
+    private void SetActionError(string title, string message)
+    {
+        _actionErrorTitle = title;
+        _actionError = message;
+    }
+
+    private void ClearActionError()
+    {
+        _actionErrorTitle = "Action failed";
+        _actionError = null;
+    }
+
+    private static bool IsInsufficientBalance(string? code, string message) =>
+        string.Equals(code, ZentitleFeatureActionCodes.InsufficientBalance, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(code, "consume_rejected", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("insufficient", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("not enough", StringComparison.OrdinalIgnoreCase);
+
+}

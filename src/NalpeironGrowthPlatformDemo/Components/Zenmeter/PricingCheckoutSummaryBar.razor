@@ -1,0 +1,43 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Zenmeter
+
+<div class="fixed inset-x-0 bottom-10 z-40 border-t border-slate-200 bg-white/95 px-4 py-4 shadow-[0_-12px_30px_rgba(15,23,42,0.10)] backdrop-blur">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
+        <div class="min-w-0">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Checkout summary</div>
+            <div class="mt-1 text-sm font-bold text-slate-900">@Title</div>
+            <div class="mt-1 max-w-3xl truncate text-sm text-slate-500">@Items</div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="text-right">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Total</div>
+                @if (PricesLoading)
+                {
+                    <div class="ml-auto mt-1 h-8 w-24 animate-pulse rounded bg-slate-100"></div>
+                    <div class="ml-auto mt-2 h-3 w-16 animate-pulse rounded bg-slate-100"></div>
+                }
+                else if (PricesFailed)
+                {
+                    <div class="text-sm font-bold text-slate-700">Price unavailable</div>
+                    <div class="text-xs font-medium text-slate-500">first invoice</div>
+                }
+                else
+                {
+                    <div class="text-2xl font-extrabold text-slate-900">$@Total.ToString("N0")</div>
+                    <div class="text-xs font-medium text-slate-500">first invoice</div>
+                }
+            </div>
+            <SpinnerButton Variant="primary" Size="lg" OnClick="Checkout"
+                           Disabled="@Disabled" Label="Checkout"/>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Items { get; set; } = "";
+    [Parameter] public int Total { get; set; }
+    [Parameter] public bool PricesLoading { get; set; }
+    [Parameter] public bool PricesFailed { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter, EditorRequired] public EventCallback Checkout { get; set; }
+}

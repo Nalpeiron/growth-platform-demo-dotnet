@@ -1,0 +1,322 @@
+@inject IZenmeterDemo Demo
+@inject NavigationManager Nav
+@inject BrowserStorage Storage
+
+@if (_view is not null)
+{
+    <ActionErrorToast Title="@_actionErrorTitle" Message="@_actionError" OnClose="ClearActionError"/>
+    @if (_topUpConfirmation is not null)
+    {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+            <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+                <p class="text-xs font-semibold uppercase tracking-widest text-indigo-600">Confirm recurring top-up</p>
+                <h2 class="mt-2 text-xl font-extrabold text-slate-900">@_topUpConfirmation.Name</h2>
+                <p class="mt-3 text-sm text-slate-600">
+                    @_topUpConfirmation.Message
+                </p>
+                <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-sm font-medium text-slate-500">@_topUpConfirmation.CurrentChargeLabel</span>
+                        <span class="text-lg font-extrabold text-slate-900">@_topUpConfirmation.CurrentChargeDisplay</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_topUpConfirmation.RecurringChargeDisplay))
+                    {
+                        <div class="mt-2 flex items-center justify-between gap-4 text-sm">
+                            <span class="font-medium text-slate-500">@_topUpConfirmation.RecurringChargeLabel</span>
+                            <span class="font-semibold text-slate-700">@_topUpConfirmation.RecurringChargeDisplay</span>
+                        </div>
+                    }
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button"
+                            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                            disabled="@IsBusy"
+                            @onclick="ClearTopUpConfirmation">
+                        Cancel
+                    </button>
+                    <SpinnerButton Variant="amber" Size="sm" Width="w-32"
+                                   OnClick="ConfirmTopUpAsync"
+                                   Busy="@(_busy == $"topup-{_topUpConfirmation.Sku}")" Disabled="@IsBusy"
+                                   Label="Confirm" BusyLabel="Confirming..." />
+                </div>
+            </div>
+        </div>
+    }
+
+    <main class="mx-auto max-w-6xl px-6 py-16">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-widest text-indigo-600">SaaS customer workspace</p>
+                <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-slate-900">@_view.CustomerName workspace</h1>
+            </div>
+            <div class="mt-2 text-right">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Logged in as</div>
+                <div class="mt-1 text-sm font-semibold text-slate-900">@_view.User.DisplayName</div>
+                <div class="mt-0.5 text-sm text-slate-500">@_view.User.Email</div>
+            </div>
+        </div>
+
+        @if (_view.DataIssues.Count > 0)
+        {
+            <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <div class="font-semibold">Zenmeter data needs attention</div>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                    @foreach (var issue in _view.DataIssues)
+                    {
+                        <li>@issue</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="mt-10 grid gap-8 lg:grid-cols-3">
+            <ZenmeterSubscriptionSummary View="_view"/>
+
+            <ZenmeterActiveAddonsPanel Addons="_view.ActiveAddons"/>
+
+            <ZenmeterCreditsPoolPanel Meters="_view.Meters"
+                                      TopUpOptions="_view.TopUpOptions"
+                                      NextUsageResetAt="_view.NextUsageResetAt"
+                                      IsBusy="IsBusy"
+                                      BusyAction="_busy"
+                                      OnAddTopUp="AddTopUpAsync"/>
+
+            <ZenmeterUsageFeaturesPanel Features="_view.UsageFeatures"
+                                        IsBusy="IsBusy"
+                                        BusyAction="_busy"
+                                        OnConsume="ConsumeAsync"/>
+
+            <ZenmeterAccessFeatureGrid Features="_view.AccessFeatures"/>
+
+            <ZenmeterAdminLogPanel Refs="_view.Refs"
+                                   Events="_view.Events"
+                                   CustomerUrl="@_view.CustomerUrl"
+                                   SubscriptionUrl="@_view.SubscriptionUrl"/>
+        </div>
+    </main>
+}
+else if (!_loaded)
+{
+    <main class="mx-auto max-w-6xl px-6 py-16">
+        <p class="text-sm text-slate-400">Loading workspace…</p>
+    </main>
+}
+
+@code {
+    private ZenmeterWorkspaceView? _view;
+    private bool _loaded;
+    private string? _actionError;
+    private string _actionErrorTitle = "Action failed";
+    private string? _sessionId;
+    private ZenmeterTopUpConfirmation? _topUpConfirmation;
+
+    // Identifies the action currently in flight (e.g. "consume-<key>", "topup-<sku>"). Drives the
+    // inline spinner and disables every action button while a request runs — this replaces the old
+    // App.razor pending-button and live-cost JavaScript.
+    private string? _busy;
+
+    private bool IsBusy => _busy is not null;
+
+    // The session id lives in localStorage, reachable only via JS interop once the component is
+    // interactive — hence OnAfterRenderAsync rather than OnInitializedAsync.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _sessionId = await Storage.GetAsync(SessionStorageKey.Zenmeter);
+        await LoadAsync();
+        _loaded = true;
+
+        if (_view is null)
+        {
+            // No valid session - there's no billing-system context to send the user back to a
+            // specific pricing route, so restart from the product picker.
+            Nav.NavigateTo(DemoRoutes.Products);
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _view = string.IsNullOrEmpty(_sessionId)
+            ? null
+            : await Demo.GetWorkspace(_sessionId, CancellationToken.None);
+    }
+
+    private async Task ConsumeAsync(ZenmeterUsageConsumeRequest request)
+    {
+        if (string.IsNullOrEmpty(_sessionId) || IsBusy)
+        {
+            return;
+        }
+
+        var featureKey = request.FeatureKey;
+        if (TryBuildUsageLimitError(request, out var message))
+        {
+            SetActionError("Usage limit exceeded", message);
+            return;
+        }
+
+        _busy = $"consume-{featureKey}";
+        try
+        {
+            var result = await Demo.ConsumeFeature(_sessionId, featureKey, request.Amount, CancellationToken.None);
+            SetActionError(result.Action);
+            if (_view is not null && result.ViewUpdate is not null)
+            {
+                _view = ZenmeterWorkspaceUsageUpdater.Apply(_view, result.ViewUpdate);
+            }
+            else if (result.Succeeded)
+            {
+                await LoadAsync();
+            }
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private async Task AddTopUpAsync(string addonSku)
+    {
+        if (string.IsNullOrEmpty(_sessionId) || IsBusy)
+        {
+            return;
+        }
+
+        await PurchaseTopUpAsync(addonSku);
+    }
+
+    private async Task ConfirmTopUpAsync()
+    {
+        if (_topUpConfirmation is null)
+        {
+            return;
+        }
+
+        var addonSku = _topUpConfirmation.Sku;
+        ClearTopUpConfirmation();
+        await PurchaseTopUpAsync(addonSku, automaticPaymentConfirmed: true);
+    }
+
+    private async Task PurchaseTopUpAsync(string addonSku, bool automaticPaymentConfirmed = false)
+    {
+        if (string.IsNullOrEmpty(_sessionId))
+        {
+            return;
+        }
+
+        _busy = $"topup-{addonSku}";
+        try
+        {
+            var result = await Demo.AddTopUp(
+                _sessionId,
+                addonSku,
+                CancellationToken.None,
+                automaticPaymentConfirmed);
+            SetActionError(result.Action);
+            if (result is { Succeeded: true, Confirmation: not null })
+            {
+                _topUpConfirmation = result.Confirmation;
+                return;
+            }
+
+            if (result.Succeeded && !string.IsNullOrWhiteSpace(result.RedirectUrl))
+            {
+                Nav.NavigateTo(result.RedirectUrl, forceLoad: true);
+                return;
+            }
+
+            if (result.Succeeded && !string.IsNullOrWhiteSpace(result.OperationId))
+            {
+                Nav.NavigateTo(
+                    $"{DemoRoutes.ZenmeterBillingReturn}?sessionId={Uri.EscapeDataString(_sessionId)}&topUpOperationId={Uri.EscapeDataString(result.OperationId)}");
+                return;
+            }
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private void ClearTopUpConfirmation()
+    {
+        _topUpConfirmation = null;
+    }
+
+    private bool TryBuildUsageLimitError(ZenmeterUsageConsumeRequest request, out string message)
+    {
+        message = string.Empty;
+        var feature = _view?.UsageFeatures.FirstOrDefault(candidate =>
+            string.Equals(candidate.Key, request.FeatureKey, StringComparison.OrdinalIgnoreCase));
+        if (feature?.ConversionRate is not { } rate)
+        {
+            return false;
+        }
+
+        var meter = _view?.Meters.FirstOrDefault(candidate =>
+            string.Equals(candidate.Key, feature.MeterKey, StringComparison.OrdinalIgnoreCase));
+        if (meter is null)
+        {
+            return false;
+        }
+
+        var required = request.Amount * rate;
+        if (required <= meter.Available)
+        {
+            return false;
+        }
+
+        message =
+            $"{feature.Name} needs {FormatQuantity(required)} {UnitLabel(required, feature.MeterUnitName, feature.MeterUnitPluralName)}, "
+            + $"but only {FormatQuantity(meter.Available)} {UnitLabel(meter.Available, feature.MeterUnitName, feature.MeterUnitPluralName)} are available.";
+        return true;
+    }
+
+    private void SetActionError(DemoActionResult result)
+    {
+        if (string.IsNullOrWhiteSpace(result.Message))
+        {
+            ClearActionError();
+            return;
+        }
+
+        var title = IsInsufficientBalance(result.Code, result.Message)
+            ? "Usage limit exceeded"
+            : "Action failed";
+        SetActionError(title, result.Message);
+    }
+
+    private void SetActionError(string title, string message)
+    {
+        _actionErrorTitle = title;
+        _actionError = message;
+    }
+
+    private void ClearActionError()
+    {
+        _actionErrorTitle = "Action failed";
+        _actionError = null;
+    }
+
+    private static bool IsInsufficientBalance(string? code, string message) =>
+        string.Equals(code, "insufficient_balance", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(code, "consume_rejected", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("insufficient", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("not enough", StringComparison.OrdinalIgnoreCase);
+
+    private static string UnitLabel(decimal amount, string singular, string plural) =>
+        amount == 1 ? singular : plural;
+
+    private static string FormatQuantity(decimal value) =>
+        value % 1 == 0 ? value.ToString("N0") : value.ToString("N2");
+
+}

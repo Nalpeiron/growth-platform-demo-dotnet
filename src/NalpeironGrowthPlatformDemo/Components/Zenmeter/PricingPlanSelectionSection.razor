@@ -1,0 +1,47 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Zenmeter
+
+<section class="mt-14">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <span class="rounded-md bg-slate-950 px-3 py-2 text-sm font-bold text-white">Step 1</span>
+            <h2 class="text-2xl font-bold text-slate-900">Select your plan</h2>
+        </div>
+
+        <div class="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm" role="radiogroup"
+             aria-label="Billing period">
+            <button type="button" @onclick="() => PeriodChanged.InvokeAsync(ZenmeterOfferingPeriod.Monthly)"
+                    class="@PeriodClass(ZenmeterOfferingPeriod.Monthly)">Monthly
+            </button>
+            <button type="button" @onclick="() => PeriodChanged.InvokeAsync(ZenmeterOfferingPeriod.Yearly)"
+                    class="@PeriodClass(ZenmeterOfferingPeriod.Yearly)">Yearly
+            </button>
+        </div>
+    </div>
+
+    <div class="mt-8 grid items-stretch gap-8 lg:grid-cols-3">
+        @foreach (var tier in Pricing.Tiers)
+        {
+            <PricingTierCard Tier="tier" MeterUnitPluralName="@Pricing.MeterUnitPluralName"
+                             Period="@Period"
+                             Selected="@(string.Equals(SelectedTierKey, tier.Key, StringComparison.OrdinalIgnoreCase))"
+                             PriceLoading="@TierPricesLoading"
+                             PriceLoadFailed="@TierPricesFailed"
+                             OnSelect="TierSelected"/>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ZenmeterCatalogPricing Pricing { get; set; } = default!;
+    [Parameter] public string? SelectedTierKey { get; set; }
+    [Parameter] public ZenmeterOfferingPeriod Period { get; set; } = ZenmeterOfferingPeriod.Monthly;
+    [Parameter] public bool TierPricesLoading { get; set; }
+    [Parameter] public bool TierPricesFailed { get; set; }
+    [Parameter, EditorRequired] public EventCallback<ZenmeterOfferingPeriod> PeriodChanged { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string> TierSelected { get; set; }
+
+    private string PeriodClass(ZenmeterOfferingPeriod period) =>
+        Period == period
+            ? "block rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow transition"
+            : "block rounded-full px-5 py-2 text-sm font-semibold text-slate-500 transition hover:text-slate-700";
+}

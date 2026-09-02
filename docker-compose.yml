@@ -1,0 +1,46 @@
+name: growth-platform-demo
+
+services:
+  growth-platform-demo:
+    build:
+      context: .
+      dockerfile: src/NalpeironGrowthPlatformDemo/Dockerfile
+      secrets:
+        - nuget_config
+    ports:
+      - "5080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Shared Nalpeiron Growth Platform connection.
+      Nalpeiron__ApiUrl: "${NALPEIRON_API_URL}"
+      Nalpeiron__OAuthUrl: "${NALPEIRON_OAUTH_URL}"
+      Nalpeiron__WebUrl: "${NALPEIRON_WEB_URL:-}"
+      Nalpeiron__TenantId: "${NALPEIRON_TENANT_ID}"
+      Nalpeiron__ClientId: "${NALPEIRON_CLIENT_ID}"
+      Nalpeiron__ClientSecret: "${NALPEIRON_CLIENT_SECRET}"
+      # Zentitle (licensing) product.
+      Zentitle__ProductId: "${ZENTITLE_PRODUCT_ID}"
+      Zentitle__EditionOrder: "${ZENTITLE_EDITION_ORDER:-Standard,Premium,Enterprise}"
+      # Prices come from appsettings.json; override individually if needed, e.g.:
+      # Zentitle__Prices__elevate-premium-yearly__Price: "749"
+      # Zenmeter (SaaS metering) product.
+      Zenmeter__BusinessModelId: "${ZENMETER_BUSINESS_MODEL_ID}"
+      # Static SKU prices are used by the /elevate/saas/default (None) variant.
+      # Product routes are explicit; this only controls which provider Program.cs's Zenmeter
+      # debug pricing endpoint uses when no billing system is specified.
+      Billing__DefaultBillingSystem: "${BILLING_DEFAULT_SYSTEM:-None}"
+      Billing__Stripe__ApiUrl: "${STRIPE_API_URL:-https://api.stripe.com}"
+      Billing__Stripe__SecretKey: "${STRIPE_SECRET_KEY:-}"
+      Billing__Stripe__ZenmeterSuccessUrl: "${STRIPE_ZENMETER_SUCCESS_URL:-http://localhost:5080/elevate/saas/billing/return}"
+      Billing__Stripe__ZenmeterCancelUrl: "${STRIPE_ZENMETER_CANCEL_URL:-http://localhost:5080/elevate/saas/stripe/checkout}"
+      Billing__Stripe__ZentitleSuccessUrl: "${STRIPE_ZENTITLE_SUCCESS_URL:-http://localhost:5080/elevate/billing/return}"
+      Billing__Stripe__ZentitleCancelUrl: "${STRIPE_ZENTITLE_CANCEL_URL:-http://localhost:5080/elevate/stripe/checkout}"
+      Billing__FastSpring__ApiUrl: "${FASTSPRING_API_URL:-https://api.fastspring.com}"
+      Billing__FastSpring__ZenmeterStorefrontUrl: "${FASTSPRING_ZENMETER_STOREFRONT_URL:-}"
+      Billing__FastSpring__ZentitleStorefrontUrl: "${FASTSPRING_ZENTITLE_STOREFRONT_URL:-}"
+      Billing__FastSpring__ApiUsername: "${FASTSPRING_API_USERNAME:-}"
+      Billing__FastSpring__ApiPassword: "${FASTSPRING_API_PASSWORD:-}"
+
+secrets:
+  nuget_config:
+    file: ./nuget.config

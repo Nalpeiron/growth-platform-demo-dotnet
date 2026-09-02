@@ -1,0 +1,119 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Zenmeter
+
+<label class="group relative block h-full @(SelectedPlan is null ? "cursor-not-allowed" : "cursor-pointer")">
+    <input type="radio"
+           name="tierKey"
+           value="@Tier.Key"
+           checked="@Selected"
+           @onchange="OnChanged"
+           disabled="@(SelectedPlan is null)"
+           class="peer absolute inset-0 z-10 h-full w-full opacity-0 @(SelectedPlan is null ? "cursor-not-allowed" : "cursor-pointer")"/>
+    <span
+        class="relative flex h-full flex-col rounded-lg border border-slate-200 bg-white p-8 shadow-sm transition peer-checked:border-indigo-600 peer-checked:bg-indigo-50/40 peer-checked:ring-2 peer-checked:ring-indigo-600 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-600 @(SelectedPlan is null ? "opacity-70" : "group-hover:border-indigo-300") @(Tier.IsFeatured ? "shadow-lg" : string.Empty)">
+        @if (Tier.IsFeatured)
+        {
+            <span
+                class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-4 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                Popular
+            </span>
+        }
+
+        <span class="flex items-start justify-between gap-4">
+            <span>
+                <span class="text-2xl font-bold text-slate-900">@Tier.Name</span>
+                @if (!string.IsNullOrWhiteSpace(Tier.Badge))
+                {
+                    <span
+                        class="mt-1 block text-xs font-semibold uppercase tracking-wide text-indigo-600">@Tier.Badge</span>
+                }
+            </span>
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                @IncludedCreditsLabel @MeterUnitPluralName
+            </span>
+        </span>
+
+        <span class="mt-3 min-h-[4.5rem] text-sm leading-relaxed text-slate-500">@Tier.Description</span>
+
+        <span class="mt-4 block">
+            @if (SelectedPlan is not null)
+            {
+                @if (PriceLoading)
+                {
+                    <span class="block h-[3.75rem] animate-pulse rounded-md bg-slate-100"></span>
+                    <span class="mt-2 block h-4 w-24 animate-pulse rounded bg-slate-100"></span>
+                }
+                else if (PriceLoadFailed)
+                {
+                    <span class="text-lg font-bold text-slate-700">Price unavailable</span>
+                    <span class="mt-1 block text-sm text-slate-500">Billing price could not be loaded.</span>
+                }
+                else
+                {
+                    <span class="flex items-baseline gap-2">
+                        <span class="text-sm font-semibold text-slate-400">USD</span>
+                        <span class="text-5xl font-extrabold tracking-tight text-slate-900">$@SelectedPlan.Price</span>
+                    </span>
+                    <span class="mt-1 block text-sm text-slate-500">@SelectedPlan.BillingLabel</span>
+                }
+            }
+            else
+            {
+                <span class="text-lg font-bold text-slate-700">Price not configured</span>
+                <span class="mt-1 block text-sm text-slate-500">This billing period is unavailable.</span>
+            }
+        </span>
+
+        <span class="mt-6 block border-t border-slate-100 pt-6">
+            <span
+                class="text-xs font-semibold uppercase tracking-wide text-slate-400">@MeterUnitPluralName included</span>
+            <span class="mt-3 flex items-baseline gap-2">
+                <span class="text-3xl font-extrabold tracking-tight text-slate-900">@IncludedCreditsLabel</span>
+                <span class="text-sm text-slate-500">monthly @MeterUnitPluralName</span>
+            </span>
+        </span>
+
+        @if (Tier.IncludedFeatures.Count > 0)
+        {
+            <span class="mt-6 block border-t border-slate-100 pt-6">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">What's included</span>
+                <span class="mt-4 block space-y-2.5">
+                    @foreach (var feature in Tier.IncludedFeatures)
+                    {
+                        <span class="flex items-start gap-2.5 text-sm text-slate-700">
+                            <svg class="mt-0.5 h-4 w-4 flex-none text-emerald-500" viewBox="0 0 20 20"
+                                 fill="currentColor"
+                                 aria-hidden="true">
+                                <path fill-rule="evenodd"
+                                      d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0l-3.5-3.5a1 1 0 1 1 1.4-1.4l2.8 2.79 6.8-6.79a1 1 0 0 1 1.4 0Z"
+                                      clip-rule="evenodd"/>
+                            </svg>
+                            <span>@feature</span>
+                        </span>
+                    }
+                </span>
+            </span>
+        }
+    </span>
+</label>
+
+@code {
+    [Parameter, EditorRequired] public ZenmeterTierPricing Tier { get; set; } = null!;
+    [Parameter, EditorRequired] public string MeterUnitPluralName { get; set; } = "";
+    [Parameter] public ZenmeterOfferingPeriod Period { get; set; } = ZenmeterOfferingPeriod.Monthly;
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public bool PriceLoading { get; set; }
+    [Parameter] public bool PriceLoadFailed { get; set; }
+    [Parameter] public EventCallback<string> OnSelect { get; set; }
+
+    private Task OnChanged() =>
+        SelectedPlan is null ? Task.CompletedTask : OnSelect.InvokeAsync(Tier.Key);
+
+    private ZenmeterOfferingPricing? SelectedPlan => OfferingFor(Period);
+
+    private string IncludedCreditsLabel => Tier.IncludedMeterAmount.ToString("N0");
+
+    private ZenmeterOfferingPricing? OfferingFor(ZenmeterOfferingPeriod period) =>
+        Tier.Offerings.FirstOrDefault(plan =>
+            plan.IsVisible && !plan.IsTrial && plan.Period == period);
+
+}

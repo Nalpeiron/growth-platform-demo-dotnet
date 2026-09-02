@@ -1,0 +1,17 @@
+bin/
+obj/
+.vs/
+.idea/
+.vscode/
+TestResults/
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+nuget.config
+src/NalpeironGrowthPlatformDemo/nuget.config
+*.key
+*.pem
+*.pfx
+*.user
+*.suo

@@ -1,0 +1,135 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Zenmeter
+
+<section class="rounded-2xl border border-slate-800 bg-slate-950 p-8 shadow-sm lg:col-span-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Admin logs</h2>
+    <dl class="mt-4 grid gap-4 text-slate-300 sm:grid-cols-2">
+        <div>
+            <dt class="text-xs text-slate-500">Customer ID</dt>
+            <dd class="font-mono text-sm text-slate-100">
+                @if (CustomerUrl is not null)
+                {
+                    <a href="@CustomerUrl" target="_blank" rel="noopener"
+                       class="hover:text-indigo-200">@Refs.CustomerId</a>
+                }
+                else
+                {
+                    @(Refs.CustomerId ?? "-")
+                }
+            </dd>
+        </div>
+        <div>
+            <dt class="text-xs text-slate-500">Subscription ID</dt>
+            <dd class="font-mono text-sm text-slate-100">
+                @if (SubscriptionUrl is not null)
+                {
+                    <a href="@SubscriptionUrl" target="_blank" rel="noopener"
+                       class="hover:text-indigo-200">@Refs.SubscriptionId</a>
+                }
+                else
+                {
+                    @(Refs.SubscriptionId ?? "-")
+                }
+            </dd>
+        </div>
+    </dl>
+
+    @if (CustomerUrl is not null || SubscriptionUrl is not null)
+    {
+        <div class="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-indigo-300">
+            @if (CustomerUrl is not null)
+            {
+                <a href="@CustomerUrl" target="_blank" rel="noopener" class="hover:text-indigo-200">Customer details</a>
+            }
+            @if (SubscriptionUrl is not null)
+            {
+                <a href="@SubscriptionUrl" target="_blank" rel="noopener" class="hover:text-indigo-200">Subscription
+                    details</a>
+            }
+        </div>
+    }
+
+    <ul class="mt-5 space-y-2">
+        @foreach (var entry in Events)
+        {
+            <li class="font-mono text-xs text-slate-400">@RenderEventEntry(entry)</li>
+        }
+    </ul>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ZenmeterProvisioningRefs Refs { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<string> Events { get; set; } = [];
+    [Parameter] public string? CustomerUrl { get; set; }
+    [Parameter] public string? SubscriptionUrl { get; set; }
+
+    private RenderFragment RenderEventEntry(string entry) => builder =>
+    {
+        var sequence = 0;
+        foreach (var part in EventParts(entry))
+        {
+            if (part.Url is null)
+            {
+                builder.AddContent(sequence++, part.Text);
+                continue;
+            }
+
+            builder.OpenElement(sequence++, "a");
+            builder.AddAttribute(sequence++, "href", part.Url);
+            builder.AddAttribute(sequence++, "target", "_blank");
+            builder.AddAttribute(sequence++, "rel", "noopener");
+            builder.AddAttribute(sequence++, "class", "text-indigo-300 underline decoration-indigo-300/40 underline-offset-2 hover:text-indigo-200");
+            builder.AddContent(sequence++, part.Text);
+            builder.CloseElement();
+        }
+    };
+
+    private IReadOnlyList<EventLogPart> EventParts(string entry)
+    {
+        var links = new[]
+            {
+                new EventLogPart(Refs.CustomerId ?? string.Empty, CustomerUrl),
+                new EventLogPart(Refs.SubscriptionId ?? string.Empty, SubscriptionUrl)
+            }
+            .Where(link => !string.IsNullOrWhiteSpace(link.Text) && !string.IsNullOrWhiteSpace(link.Url))
+            .ToArray();
+
+        if (links.Length == 0)
+        {
+            return [new EventLogPart(entry, null)];
+        }
+
+        var parts = new List<EventLogPart>();
+        var position = 0;
+        while (position < entry.Length)
+        {
+            var next = links
+                .Select(link => new
+                {
+                    Link = link,
+                    Index = entry.IndexOf(link.Text, position, StringComparison.OrdinalIgnoreCase)
+                })
+                .Where(match => match.Index >= 0)
+                .OrderBy(match => match.Index)
+                .FirstOrDefault();
+
+            if (next is null)
+            {
+                parts.Add(new EventLogPart(entry[position..], null));
+                break;
+            }
+
+            if (next.Index > position)
+            {
+                parts.Add(new EventLogPart(entry[position..next.Index], null));
+            }
+
+            parts.Add(new EventLogPart(entry.Substring(next.Index, next.Link.Text.Length), next.Link.Url));
+            position = next.Index + next.Link.Text.Length;
+        }
+
+        return parts;
+    }
+
+    private readonly record struct EventLogPart(string Text, string? Url);
+
+}

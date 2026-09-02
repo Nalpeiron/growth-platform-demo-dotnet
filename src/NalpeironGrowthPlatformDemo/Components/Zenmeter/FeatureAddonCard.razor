@@ -1,0 +1,61 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Zenmeter
+
+<label class="group relative block @(IsUnavailable ? "cursor-not-allowed" : "cursor-pointer")">
+    <input type="checkbox"
+           value="@Addon.Sku"
+           checked="@Selected"
+           @onchange="OnChanged"
+           disabled="@IsUnavailable"
+           class="peer absolute inset-0 z-10 h-full w-full opacity-0 @(IsUnavailable ? "cursor-not-allowed" : "cursor-pointer")"/>
+    <span
+        class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition peer-checked:border-indigo-500 peer-checked:ring-1 peer-checked:ring-indigo-500 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500 @(IsUnavailable ? "opacity-75" : "group-hover:border-indigo-300")">
+        <span class="flex items-start justify-between gap-4">
+            <span>
+                <span class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Add-on</span>
+                <span class="mt-2 block text-xl font-bold text-slate-900">@Addon.Name</span>
+            </span>
+            <span class="text-right">
+                @if (PriceLoading)
+                {
+                    <span class="block h-8 w-20 animate-pulse rounded bg-slate-100"></span>
+                    <span class="mt-2 block h-3 w-16 animate-pulse rounded bg-slate-100"></span>
+                }
+                else if (PriceLoadFailed)
+                {
+                    <span class="block text-sm font-bold text-slate-700">Unavailable</span>
+                    <span class="block text-xs font-medium text-slate-500">Price failed</span>
+                }
+                else
+                {
+                    <span class="block text-2xl font-extrabold text-slate-900">$@Addon.Price</span>
+                    <span class="block text-xs font-medium text-slate-500">@Addon.BillingLabel</span>
+                }
+            </span>
+        </span>
+        <span class="mt-3 block min-h-[3rem] text-sm leading-relaxed text-slate-500">@Addon.Description</span>
+        @if (Addon.IncludedFeatures.Count > 0)
+        {
+            <span class="mt-5 block space-y-2.5">
+                @foreach (var feature in Addon.IncludedFeatures)
+                {
+                    <span class="flex items-start gap-2.5 text-sm text-slate-700">
+                        <span class="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                        <span>@feature</span>
+                    </span>
+                }
+            </span>
+        }
+    </span>
+</label>
+
+@code {
+    [Parameter, EditorRequired] public ZenmeterAddonPricing Addon { get; set; } = null!;
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public bool PriceLoading { get; set; }
+    [Parameter] public bool PriceLoadFailed { get; set; }
+    [Parameter] public EventCallback<string> OnToggle { get; set; }
+
+    private bool IsUnavailable => PriceLoading || PriceLoadFailed;
+
+    private Task OnChanged() => IsUnavailable ? Task.CompletedTask : OnToggle.InvokeAsync(Addon.Sku);
+}

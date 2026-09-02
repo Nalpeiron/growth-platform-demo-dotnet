@@ -1,0 +1,37 @@
+@page "/elevate/saas/{BillingProvider}"
+@inject Microsoft.Extensions.Options.IOptions<BillingOptions> Billing
+@inject NavigationManager Nav
+
+<PageTitle>Nalpeiron Growth Platform Demo Account - Pricing</PageTitle>
+
+<TopBar/>
+
+@* The configurator (plan/period/add-ons/credit slider + live summary) runs as an Interactive
+   Server component, so all of its state and totals are computed in C# without page JavaScript. *@
+@if (_billingSystem is not null)
+{
+    <PricingConfigurator @key="_billingSystem.Value"
+                         SelectedBillingSystem="@_billingSystem.Value"/>
+}
+
+@code {
+    [Parameter] public string? BillingProvider { get; set; }
+
+    private BillingSystem? _billingSystem;
+
+    protected override void OnParametersSet()
+    {
+        var parsed = BillingSystems.FromSlug(BillingProvider);
+        if (parsed is null)
+        {
+            // Unrecognized slug in the URL (typo, stale link) - fall back to the default route.
+            // A recognized billing system always renders here, even if it turns out to be
+            // unconfigured; PricingConfigurator surfaces that as an on-page error instead.
+            Nav.NavigateTo(DemoRoutes.ZenmeterPricingFor(Billing.Value.DefaultBillingSystem), replace: true);
+            return;
+        }
+
+        _billingSystem = parsed;
+    }
+
+}

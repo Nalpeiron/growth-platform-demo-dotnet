@@ -1,0 +1,57 @@
+@page "/elevate/billing/fastspring-popup"
+@using Microsoft.JSInterop
+@using NalpeironGrowthPlatformDemo.Application.Zentitle.BillingProviders
+@inject IJSRuntime JS
+@inject ZentitleFastSpringPopupCheckoutContextService CheckoutContext
+
+<PageTitle>Opening FastSpring Checkout</PageTitle>
+
+<TopBar/>
+
+<main class="mx-auto max-w-xl px-6 py-16 text-center">
+    <p class="text-xs font-semibold uppercase tracking-widest text-indigo-600">FastSpring checkout</p>
+    <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">Opening secure checkout</h1>
+    <p id="fastspring-checkout-status" class="mt-3 text-slate-500">@_status</p>
+    <a href="@SafeCancelUrl"
+       class="mt-6 inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+        Return to checkout
+    </a>
+</main>
+
+@code {
+    [SupplyParameterFromQuery] public string? SessionId { get; set; }
+    [SupplyParameterFromQuery] public string? CancelUrl { get; set; }
+
+    private string _status = "If checkout does not open automatically, return to the pricing page and try again.";
+
+    private string SafeCancelUrl =>
+        LocalRedirectGuard.IsSafeLocalPath(CancelUrl)
+            ? CancelUrl!
+            : DemoRoutes.ZentitlePricingFor(BillingSystem.FastSpring);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || string.IsNullOrWhiteSpace(SessionId))
+        {
+            return;
+        }
+
+        var context = await CheckoutContext.Get(SessionId, CancellationToken.None);
+        if (context is null || context.ProductPaths.Count == 0)
+        {
+            _status = "Checkout session could not be loaded. Return to checkout and try again.";
+            StateHasChanged();
+            return;
+        }
+
+        await JS.InvokeVoidAsync(
+            "nalpeironFastSpring.openPopupCheckout",
+            context.Storefront,
+            SessionId,
+            context.ProductPaths,
+            context.OrderTags,
+            context.ReturnUrl,
+            true);
+    }
+
+}

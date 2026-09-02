@@ -1,0 +1,22 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Zenmeter
+
+<section class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm lg:col-span-3">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Usage features</h2>
+    <div class="mt-5 grid gap-3">
+        @foreach (var feature in Features)
+        {
+            <ZenmeterUsageFeatureRow @key="feature.Key"
+                                     Feature="feature"
+                                     IsBusy="IsBusy"
+                                     BusyAction="BusyAction"
+                                     OnConsume="amount => OnConsume.InvokeAsync(new ZenmeterUsageConsumeRequest(feature.Key, amount))" />
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ZenmeterUsageFeatureView> Features { get; set; } = [];
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public string? BusyAction { get; set; }
+    [Parameter, EditorRequired] public EventCallback<ZenmeterUsageConsumeRequest> OnConsume { get; set; }
+}

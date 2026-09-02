@@ -1,0 +1,81 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Shared
+
+@*
+    Reusable button with appearance variants, a normal label and a busy label + loading spinner.
+    `Busy` is driven by the parent component's C# state — every page is interactive, so there is
+    no JavaScript involved. When Busy is true the button shows the spinner + BusyLabel and is
+    disabled; otherwise it shows ChildContent (or Label).
+*@
+<button type="@Type"
+        disabled="@(Disabled || Busy)"
+        @onclick="OnClick"
+        class="@CssClass"
+        @attributes="AdditionalAttributes">
+    @if (Busy)
+    {
+        <span class="inline-flex items-center gap-2">
+            <span class="@SpinnerClass" aria-hidden="true"></span>
+            <span>@BusyLabel</span>
+        </span>
+    }
+    else if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <span>@Label</span>
+    }
+</button>
+
+@code {
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string Variant { get; set; } = "primary";
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public bool Pill { get; set; } = true;
+
+    /// <summary>Optional fixed width utility (e.g. "w-40") to stop layout shifting between states.</summary>
+    [Parameter] public string? Width { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string BusyLabel { get; set; } = "Working…";
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? ExtraClass { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string SpinnerClass =>
+        (Size == "sm" ? "h-3 w-3" : "h-3.5 w-3.5")
+        + " animate-spin rounded-full border-2 border-current border-r-transparent";
+
+    private string CssClass => string.Join(" ", new[]
+        {
+            "inline-flex items-center justify-center whitespace-nowrap font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+            Pill ? "rounded-full" : "rounded-lg",
+            SizeClass,
+            VariantClass,
+            Width,
+            ExtraClass
+        }
+        .Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    private string SizeClass => Size switch
+    {
+        "sm" => "px-3 py-1 text-xs",
+        "compact" => "px-4 py-1.5 text-sm",
+        "lg" => "px-6 py-3 text-sm",
+        _ => "px-5 py-2 text-sm"
+    };
+
+    private string VariantClass => Variant switch
+    {
+        "outline" => "border border-slate-300 text-slate-700 hover:bg-slate-100",
+        "amber" => "bg-amber-500 text-white shadow-sm hover:bg-amber-600",
+        "soft-indigo" => "border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
+        _ => "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
+    };
+}

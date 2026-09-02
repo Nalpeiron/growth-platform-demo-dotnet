@@ -1,0 +1,31 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Zenmeter
+
+<section class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm lg:col-span-3">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Credits pool</h2>
+        @if (NextUsageResetAt is not null)
+        {
+            <div class="text-sm font-medium text-slate-500">Next reset: @NextUsageResetAt.Value.ToString("MMM d, yyyy")</div>
+        }
+    </div>
+    <div class="mt-5 space-y-5">
+        @foreach (var meter in Meters)
+        {
+            <ZenmeterMeterUsageCard @key="meter.Key"
+                                    Meter="meter"
+                                    TopUpOptions="TopUpOptions"
+                                    IsBusy="IsBusy"
+                                    BusyAction="BusyAction"
+                                    OnAddTopUp="OnAddTopUp" />
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ZenmeterMeterUsageView> Meters { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<ZenmeterTopUpOptionView> TopUpOptions { get; set; } = [];
+    [Parameter] public DateTimeOffset? NextUsageResetAt { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public string? BusyAction { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string> OnAddTopUp { get; set; }
+}

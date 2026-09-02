@@ -1,0 +1,8 @@
+@page "/elevate/saas"
+@inject Microsoft.Extensions.Options.IOptions<BillingOptions> Billing
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized() =>
+        Nav.NavigateTo(DemoRoutes.ZenmeterPricingFor(Billing.Value.DefaultBillingSystem), replace: true);
+}

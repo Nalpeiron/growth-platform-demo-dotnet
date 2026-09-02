@@ -1,0 +1,39 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Shared
+
+<section class="rounded-2xl bg-slate-900 p-8 shadow-sm lg:col-span-2">
+    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Admin Logs</h2>
+
+    <dl class="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+        <div class="flex flex-col">
+            <dt class="text-xs text-slate-500">Customer ID</dt>
+            <dd class="font-mono text-sm text-slate-100">@(Refs.CustomerId ?? "-")</dd>
+        </div>
+        <div class="flex flex-col">
+            <dt class="text-xs text-slate-500">Entitlement group ID</dt>
+            <dd class="font-mono text-sm text-slate-100">@(Refs.EntitlementGroupId ?? "-")</dd>
+        </div>
+        <div class="flex flex-col">
+            <dt class="text-xs text-slate-500">Entitlement ID</dt>
+            <dd class="font-mono text-sm text-slate-100">@(Refs.EntitlementId ?? "-")</dd>
+        </div>
+        <div class="flex flex-col">
+            <dt class="text-xs text-slate-500">Activation ID</dt>
+            <dd class="font-mono text-sm text-slate-100">@(Refs.ActivationId ?? "-")</dd>
+        </div>
+    </dl>
+
+    <div class="mt-6 space-y-2">
+        @foreach (var ev in Events)
+        {
+            <div class="flex gap-3 rounded-lg bg-slate-800/70 px-4 py-2.5 font-mono text-xs">
+                <span class="font-semibold text-emerald-400">INFO</span>
+                <span class="text-slate-200">@ev</span>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ProvisioningRefs Refs { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<string> Events { get; set; } = [];
+}

@@ -1,0 +1,63 @@
+@page "/"
+@inject Microsoft.Extensions.Options.IOptions<DemoProductsOptions> ProductsOptions
+
+<PageTitle>Nalpeiron Growth Platform Demo Account - Products</PageTitle>
+
+<TopBar/>
+
+<main class="mx-auto max-w-5xl px-6 py-16">
+    <div class="mx-auto max-w-2xl text-center">
+        <p class="text-sm font-semibold uppercase tracking-widest text-indigo-600">@ProductCatalog.Eyebrow</p>
+        <h1 class="mt-3 text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl">@ProductCatalog.Heading</h1>
+        <p class="mt-5 text-lg text-slate-500">@ProductCatalog.Description</p>
+    </div>
+
+    <div class="mt-14 grid gap-8 md:grid-cols-2">
+        @foreach (var product in ProductCatalog.Items)
+        {
+            <article class="flex flex-col rounded-2xl border border-slate-200 bg-white p-10 shadow-sm">
+                <div class="flex h-7 items-center">
+                    <img src="@product.LogoPath" alt="@product.PlatformName"
+                         class="h-6 w-fit max-w-[150px] object-contain object-left"/>
+                </div>
+                <h2 class="mt-6 text-3xl font-bold text-slate-900">@product.Name</h2>
+                <p class="mt-4 flex-1 text-sm leading-relaxed text-slate-500">@product.Description</p>
+                <div class="mt-8">
+                    <a role="button" href="@product.Path"
+                       style="@ButtonStyle(product)"
+                       class="inline-flex w-full items-center justify-center rounded-full px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition">
+                        @product.ButtonLabel
+                    </a>
+                    @if (product.Variants is { Count: > 0 } variants)
+                    {
+                        <div class="mt-3 grid gap-3 md:min-h-[108px] md:content-start">
+                            @foreach (var variant in variants)
+                            {
+                                <a role="button" href="@variant.Path"
+                                   aria-label="Demo of @product.PlatformName with @variant.Label billing"
+                                   title="@variant.Label billing"
+                                   class="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full border border-slate-200 bg-slate-50 px-5 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-800 hover:shadow-md">
+                                    <span>Start demo with</span>
+                                    <img src="@variant.LogoPath" alt="@variant.Label"
+                                         class="h-5 w-auto max-w-[120px] object-contain"/>
+                                </a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div aria-hidden="true" class="mt-3 hidden h-[108px] md:block"></div>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+</main>
+
+@code {
+    private DemoProductsOptions ProductCatalog => ProductsOptions.Value;
+
+    private static string ButtonStyle(DemoProductOptions product) =>
+        $"background-color: {product.AccentColor};";
+
+}

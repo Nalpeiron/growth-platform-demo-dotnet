@@ -1,0 +1,15 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Shared
+
+<span class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide @CssClass">@Status</span>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+
+    private string CssClass => EntitlementStatusKinds.From(Status) switch
+    {
+        EntitlementStatusKind.Active => "bg-emerald-100 text-emerald-700",
+        EntitlementStatusKind.GracePeriod => "bg-amber-100 text-amber-700",
+        EntitlementStatusKind.Inactive => "bg-rose-100 text-rose-700",
+        _ => "bg-slate-200 text-slate-600"
+    };
+}

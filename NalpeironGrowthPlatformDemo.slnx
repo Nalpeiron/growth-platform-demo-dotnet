@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/NalpeironGrowthPlatformDemo/NalpeironGrowthPlatformDemo.csproj" />
+  <Project Path="tests/NalpeironGrowthPlatformDemo.Tests/NalpeironGrowthPlatformDemo.Tests.csproj" />
+</Solution>

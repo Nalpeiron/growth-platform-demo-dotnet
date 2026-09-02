@@ -1,0 +1,92 @@
+@namespace NalpeironGrowthPlatformDemo.Components.Shared
+@inject IElevateDemo Demo
+@inject IZenmeterDemo ZenmeterDemo
+@inject NavigationManager Nav
+@inject BrowserStorage Storage
+@inject Microsoft.Extensions.Options.IOptions<DemoProductsOptions> ProductsOptions
+
+<header
+    class="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/80 px-8 py-5 backdrop-blur">
+    <a href="@DemoRoutes.Products" class="flex items-center gap-3">
+        <img src="/assets/brand/n.svg" alt="" class="h-8 w-8" aria-hidden="true"/>
+        <span class="text-lg font-extrabold tracking-tight text-slate-900">Nalpeiron Growth Platform</span>
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Demo Account</span>
+    </a>
+    <nav class="flex items-center gap-1 text-sm font-medium text-slate-500">
+        @foreach (var product in NavProducts)
+        {
+            <a href="@product.Path"
+               class="rounded-md px-3 py-1.5 font-semibold text-indigo-600">@product.ButtonLabel</a>
+        }
+        @if (ShowReset)
+        {
+            <div class="ml-3">
+                <SpinnerButton Variant="outline" Size="compact" OnClick="ResetAsync"
+                               Busy="@_busy" Label="Reset demo" BusyLabel="Resetting…"/>
+            </div>
+        }
+    </nav>
+</header>
+
+@code {
+    private bool _hasSession;
+    private bool _busy;
+
+    private bool ShowReset => _hasSession || !IsProductsPage;
+
+    private bool IsProductsPage =>
+        string.IsNullOrWhiteSpace(
+            Nav.ToBaseRelativePath(Nav.Uri)
+                .Split('?', 2, StringSplitOptions.TrimEntries)[0]
+                .Trim('/'));
+
+    // Session ids live in localStorage, so detection happens after the component is interactive.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var zentitle = await Storage.GetAsync(SessionStorageKey.Zentitle);
+        var zenmeter = await Storage.GetAsync(SessionStorageKey.Zenmeter);
+        _hasSession = !string.IsNullOrEmpty(zentitle) || !string.IsNullOrEmpty(zenmeter);
+
+        if (_hasSession)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResetAsync()
+    {
+        _busy = true;
+        try
+        {
+            var zentitle = await Storage.GetAsync(SessionStorageKey.Zentitle);
+            if (!string.IsNullOrEmpty(zentitle))
+            {
+                Demo.Reset(zentitle);
+                await Storage.RemoveAsync(SessionStorageKey.Zentitle);
+            }
+
+            var zenmeter = await Storage.GetAsync(SessionStorageKey.Zenmeter);
+            if (!string.IsNullOrEmpty(zenmeter))
+            {
+                ZenmeterDemo.Reset(zenmeter);
+                await Storage.RemoveAsync(SessionStorageKey.Zenmeter);
+            }
+
+            _hasSession = false;
+            Nav.NavigateTo(DemoRoutes.Products);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private IEnumerable<DemoProductOptions> NavProducts =>
+        ProductsOptions.Value.Items.Where(product => product.ShowInTopNav);
+
+}
