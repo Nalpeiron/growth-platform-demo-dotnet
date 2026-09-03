@@ -444,6 +444,9 @@ Build and start the application with:
 docker compose up --build
 ```
 
+The runtime image includes ICU globalization data and time-zone data so the application's
+`en-US` culture works when using the default Alpine-based .NET image.
+
 ## Run Locally
 
 ```bash
