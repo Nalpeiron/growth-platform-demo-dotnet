@@ -14,11 +14,12 @@ RUN --mount=type=secret,id=nuget_config,target=/tmp/NuGet.Config,mode=0444,requi
     --configfile /tmp/NuGet.Config
 
 COPY --chown=app:app src/NalpeironGrowthPlatformDemo/ src/NalpeironGrowthPlatformDemo/
-RUN dotnet publish src/NalpeironGrowthPlatformDemo/NalpeironGrowthPlatformDemo.csproj \
+RUN --mount=type=secret,id=nuget_config,target=/tmp/NuGet.Config,mode=0444,required=true \
+    dotnet publish src/NalpeironGrowthPlatformDemo/NalpeironGrowthPlatformDemo.csproj \
     --configuration Release \
-    --no-restore \
     --output /tmp/publish \
-    /p:UseAppHost=false
+    /p:UseAppHost=false \
+    /p:RestoreConfigFile=/tmp/NuGet.Config
 
 FROM ${RUNTIME_IMAGE} AS runtime
 ARG INSTALL_RUNTIME_DEPENDENCIES
