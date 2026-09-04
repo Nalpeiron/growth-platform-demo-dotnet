@@ -4,7 +4,6 @@
 
 - Do not stage files or create commits unless the user explicitly asks for it after review.
 - Do not revert user changes unless the user explicitly asks for it.
-- Do not use project skills for this repository.
 - Keep edits scoped to the requested demo application.
 
 ## Project Goal
@@ -13,7 +12,7 @@ Sales demo application for the **Elevate** product family, used to show prospect
 integrate Nalpeiron platform products:
 
 - `Elevate On-premise` - Zentitle2 licensing / entitlement demo (`/elevate/default`,
-  `/elevate/fastspring`).
+  `/elevate/fastspring`, `/elevate/stripe`).
 - `Elevate SaaS` - Zenmeter subscription / metered usage demo (`/elevate/saas`).
 
 It is an ASP.NET Core (net10) app using Blazor **Interactive Server** components and Tailwind
@@ -32,26 +31,28 @@ per-product slices**.
     - `ManagementApiClient` - authenticated transport (`Bearer` + `N-TenantId` +
       `N-Api-Version`, `GetJson`/`SendJson`, friendly error extraction).
     - `CustomersClient` - shared customers resource.
-  - `Zentitle/` - Zentitle Management API slice: `ZentitleManagementClient`,
-    `ZentitleContracts`, `PricingCatalog`, `LicensingEnums`, `UpgradePolicy`.
-  - `Zenmeter/` - Zenmeter Management API slice: `ZenmeterManagementClient`,
-    `ZenmeterContracts`, `ZenmeterPricingCatalog`, `ZenmeterEnums`.
+  - `Zentitle/` - Zentitle Management API slice: generated API client/DTOs,
+    `ZentitleManagementClient`, `PricingCatalog`, `LicensingEnums`, `UpgradePolicy`.
+  - `Zenmeter/` - Zenmeter Management API slice: generated API client/DTOs,
+    `ZenmeterManagementClient`, `ZenmeterPricingCatalog`, `ZenmeterEnums`.
 - `Domain/ReferenceId.cs` - demo reference ids (`_demo-z2-` prefix, length limits).
 - `Application/` - application orchestration and read-model shaping, sliced per product:
   - `Shared/` - cross-product helpers and billing contracts: `CheckoutRequestGuard`,
     `DemoActionResult`, billing price resolver/catalog, FastSpring popup context,
     `UsageQuantity` (minimum quantity rule), `NalpeironWebLinks`.
   - `Zentitle/` - provider-aware `ElevateDemoService` orchestration, billing provider registry and
-    capabilities, direct/FastSpring checkout, asynchronous provisioning status,
+    capabilities, direct/FastSpring/Stripe checkout, asynchronous provisioning status,
     `ZentitleDemoModels` / `ZentitleDemoSession`.
-  - `Zenmeter/` - `ZenmeterDemoService` orchestration, `ZenmeterDemoModels` view models,
-    `Zenmeter*Projector` (API DTO -> workspace read model), `Zenmeter*Policy`
-    (plan/add-on/top-up rules), `ZenmeterWorkspaceBuilder`, `ZenmeterUsageSnapshotApplier`.
+  - `Zenmeter/` - `ZenmeterDemoFacade` orchestration facade, purchase/billing/usage/top-up
+    services, `ZenmeterDemoModels` view models, `Zenmeter*Projector` (API DTO -> workspace read
+    model), `Zenmeter*Policy` (plan/add-on/top-up rules), `ZenmeterWorkspaceBuilder`,
+    `ZenmeterUsageSnapshotApplier`.
 - `Components/` - Blazor UI:
   - `Pages/Products` (`/`)
-  - `Pages/Zentitle` (`/elevate/{default|fastspring}`, provider checkout, billing return,
+  - `Pages/Zentitle` (`/elevate/{default|fastspring|stripe}`, provider checkout, billing return,
     `/elevate/workspace`)
-  - `Pages/Zenmeter` (`/elevate/saas`, `/elevate/saas/checkout`, `/elevate/saas/workspace`)
+  - `Pages/Zenmeter` (`/elevate/saas`, `/elevate/saas/{provider}`,
+    `/elevate/saas/{provider}/checkout`, billing return, `/elevate/saas/workspace`)
   - `Zentitle/`, `Zenmeter/`, `Shared/` component folders.
 - `Configuration/` - `NalpeironOptions`, `ZentitleOptions`, `ZenmeterOptions`,
   `DemoProductsOptions`.
@@ -65,19 +66,24 @@ Magic strings from API/config are parsed into enums at boundaries. Zentitle inte
 ### Zentitle / Elevate On-premise
 
 - **Pricing**: live offerings + edition features. The default route uses `Zentitle:Prices`;
-  FastSpring resolves account prices by offering SKU/product path.
+  external providers resolve prices by offering SKU/product path or Stripe Price lookup key.
 - **Purchase**: shared customer creation. Default creates the entitlement group directly;
-  FastSpring opens popup checkout and waits for Orion's `subscription.activated` provisioning.
+  FastSpring opens popup checkout and waits for Orion's `subscription.activated` provisioning;
+  Stripe opens hosted checkout and waits for initial `invoice.paid` provisioning.
 - **Workspace**: live entitlement details and grouped usage-count / element-pool / boolean features.
 - **Use a feature**: lazy activation, then feature checkout/return.
 - **Upgrade**: direct/default sessions use `UpgradePolicy` and change-offering. Upgrade remains
-  disabled for FastSpring-managed sessions until provider-side subscription changes are supported.
+  disabled for FastSpring- and Stripe-managed sessions until provider-side subscription changes
+  are supported.
 - **Reset demo**: clears local session state only; live Zentitle data is cleared manually.
 
 ### Zenmeter / Elevate SaaS
 
-- **Pricing**: configured `Zenmeter` sales catalog for tiers, offerings, add-ons and rates.
-- **Purchase**: shared customer creation, Zenmeter subscription creation by SKU, default user setup.
+- **Pricing**: live business model catalog for tiers, offerings, included features, meters and rates;
+  compatible add-ons load after selecting an offering. Prices come from the selected billing provider,
+  with `Zenmeter:Prices` used only by the direct/default route.
+- **Purchase**: shared customer creation followed by direct subscription creation or provider checkout,
+  asynchronous provisioning and default user setup.
 - **Workspace**: live subscription, user, features, meters and active add-ons projected into
   workspace read models.
 - **Use a feature**: feature consumption for the default user; returned usage snapshots update
@@ -93,16 +99,18 @@ Standard ASP.NET Core layering (no custom loaders). Main sections:
 
 - `Nalpeiron` - shared API/OAuth/Web URL/tenant/client connection.
 - `Zentitle` - product id, edition order and SKU price map.
-- `Zenmeter` - committed sales catalog, feature rates, add-ons and tier order.
+- `Zenmeter` - business model id, product name and direct/default-route SKU prices; catalog structure
+  and add-on compatibility come from the live API.
 - `Products` - product picker cards and routes.
-- `Billing` - enabled providers, shared provider credentials, separate
-  `FastSpring:ZenmeterStorefrontUrl` / `FastSpring:ZentitleStorefrontUrl`, and polling settings.
+- `Billing` - enabled providers, shared provider credentials, product-specific Stripe return URLs,
+  separate FastSpring storefront URLs, and polling settings.
 
-Required live settings: `Nalpeiron:ApiUrl`, `Nalpeiron:OAuthUrl`, `Nalpeiron:TenantId`,
-`Nalpeiron:ClientId`, `Nalpeiron:ClientSecret`, `Zentitle:ProductId`.
+Required live settings: `Nalpeiron:ApiVersion`, `Nalpeiron:ApiUrl`, `Nalpeiron:OAuthUrl`,
+`Nalpeiron:TenantId`, `Nalpeiron:ClientId`, `Nalpeiron:ClientSecret`, `Zentitle:ProductId`,
+`Zenmeter:BusinessModelId`.
 
-Optional common overrides: `Nalpeiron:WebUrl`, `Zentitle:EditionOrder`, `Zenmeter:TierOrder`,
-and individual price/catalog entries.
+Optional common overrides: `Nalpeiron:WebUrl`, `Zentitle:EditionOrder`, and individual
+`Zentitle:Prices` / `Zenmeter:Prices` entries.
 
 Do not hardcode customer ids, offering ids, SKU ids, secrets, URLs, tenant ids, product ids,
 OAuth clients, or credentials in code. Keep `.env.example`, `docker-compose.yml` and
