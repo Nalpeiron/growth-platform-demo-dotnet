@@ -1,4 +1,5 @@
 using System.Net;
+using NalpeironGrowthPlatformDemo.Application.Shared.Billing.Stripe;
 using Microsoft.Extensions.Options;
 using NalpeironGrowthPlatformDemo.Configuration;
 using Stripe;
@@ -121,12 +122,12 @@ public sealed class StripeBillingPaymentVerifier(
     private static bool HasExpectedMetadata(
         IReadOnlyDictionary<string, string> metadata,
         BillingTopUpPayment payment) =>
-        HasMetadata(metadata, "billing_purpose", "top_up") &&
-        HasMetadata(metadata, "top_up_operation_id", payment.OperationId) &&
-        HasMetadata(metadata, "top_up_sku", payment.Sku) &&
-        HasMetadata(metadata, "order_ref_id", payment.OrderRefId) &&
-        HasMetadata(metadata, "demo_session_id", payment.DemoSessionId) &&
-        HasMetadata(metadata, "target_subscription_id", payment.TargetSubscriptionId);
+        HasMetadata(metadata, StripeMetadataKeys.BillingPurpose, "top_up") &&
+        HasMetadata(metadata, StripeMetadataKeys.TopUpOperationId, payment.OperationId) &&
+        HasMetadata(metadata, StripeMetadataKeys.TopUpSku, payment.Sku) &&
+        HasMetadata(metadata, StripeMetadataKeys.OrderRefId, payment.OrderRefId) &&
+        HasMetadata(metadata, StripeMetadataKeys.DemoSessionId, payment.DemoSessionId) &&
+        HasMetadata(metadata, StripeMetadataKeys.TargetSubscriptionId, payment.TargetSubscriptionId);
 
     private static bool HasMetadata(
         IReadOnlyDictionary<string, string> metadata,

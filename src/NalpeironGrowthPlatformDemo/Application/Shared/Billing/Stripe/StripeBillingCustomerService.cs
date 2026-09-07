@@ -69,8 +69,8 @@ public sealed class StripeBillingCustomerService(StripeBillingClientFactory clie
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["customer_ref"] = billingCustomer.CustomerAccountRefId,
-            ["customer_name"] = billingCustomer.CustomerName
+            [StripeMetadataKeys.CustomerRef] = billingCustomer.CustomerAccountRefId,
+            [StripeMetadataKeys.CustomerName] = billingCustomer.CustomerName
         };
         if (billingCustomer.AdditionalMetadata is null)
         {
@@ -95,7 +95,7 @@ public sealed class StripeBillingCustomerService(StripeBillingClientFactory clie
     {
         // Stripe Search Query Language requires backslashes and apostrophes in string literals
         // to be escaped; this is not URL or JSON escaping.
-        var query = $"metadata['customer_ref']:'{EscapeSearchValue(customerRef)}'";
+        var query = $"metadata['{StripeMetadataKeys.CustomerRef}']:'{EscapeSearchValue(customerRef)}'";
         var customers = await customerService.SearchAsync(
             new CustomerSearchOptions
             {

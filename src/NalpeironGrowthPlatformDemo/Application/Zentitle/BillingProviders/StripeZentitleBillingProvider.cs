@@ -13,6 +13,7 @@ public sealed class StripeZentitleBillingProvider(
     IBillingPriceResolver priceResolver,
     StripeBillingClientFactory clientFactory,
     StripeBillingCustomerService customerService,
+    IStripeSubscriptionCheckoutResolver checkoutResolver,
     IZentitleManagementClient zentitle) : IZentitleBillingProvider, IZentitleProvisioningProvider
 {
     public BillingSystem BillingSystem => BillingSystem.Stripe;
@@ -108,9 +109,9 @@ public sealed class StripeZentitleBillingProvider(
             },
             cancellationToken: cancellationToken);
 
-        return !string.IsNullOrWhiteSpace(session.Url)
-            ? ZentitleBillingCheckoutResult.Pending(session.Url)
-            : throw new InvalidOperationException("Stripe Checkout response did not contain a redirect URL.");
+        return !string.IsNullOrWhiteSpace(session.Url) && !string.IsNullOrWhiteSpace(session.Id)
+            ? ZentitleBillingCheckoutResult.Pending(session.Url, session.Id)
+            : throw new InvalidOperationException("Stripe Checkout response did not contain a session ID and redirect URL.");
     }
 
     public ZentitleProviderReturnResult ApplyReturn(
@@ -126,15 +127,6 @@ public sealed class StripeZentitleBillingProvider(
             return ZentitleProviderReturnResult.Rejected(orderRefError!);
         }
 
-        if (!ApplyReference(
-                session.ProviderSubscriptionRefId,
-                returnData.SubscriptionRefId,
-                "subscription",
-                out var subscriptionRefError))
-        {
-            return ZentitleProviderReturnResult.Rejected(subscriptionRefError!);
-        }
-
         if (!string.IsNullOrWhiteSpace(returnData.OrderRefId) &&
             string.IsNullOrWhiteSpace(session.ProviderOrderRefId))
         {
@@ -142,39 +134,43 @@ public sealed class StripeZentitleBillingProvider(
             session.Events.Add($"Received Stripe Checkout Session reference {returnData.OrderRefId}.");
         }
 
-        if (!string.IsNullOrWhiteSpace(returnData.SubscriptionRefId) &&
-            string.IsNullOrWhiteSpace(session.ProviderSubscriptionRefId))
-        {
-            session.ProviderSubscriptionRefId = returnData.SubscriptionRefId;
-            session.Events.Add($"Received Stripe subscription reference {returnData.SubscriptionRefId}.");
-        }
-
         return ZentitleProviderReturnResult.Accepted();
     }
 
-    public Task<EntitlementGroupModel?> FindProvisionedGroup(
+    public async Task<EntitlementGroupModel?> FindProvisionedGroup(
         ElevateSession session,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(session.CustomerId) ||
-            string.IsNullOrWhiteSpace(session.OrderRefId))
+            string.IsNullOrWhiteSpace(session.ProviderOrderRefId))
         {
-            return Task.FromResult<EntitlementGroupModel?>(null);
+            return null;
         }
 
-        // Orion writes subscription_data.metadata.order_ref_id to the Zentitle group. The Stripe
-        // Checkout Session id received on return is only correlation data and is not the order ref.
-        return zentitle.LookupGroup(session.CustomerId, session.OrderRefId, cancellationToken);
+        if (string.IsNullOrWhiteSpace(session.ProviderSubscriptionRefId))
+        {
+            var references = await checkoutResolver.Resolve(
+                session.ProviderOrderRefId, session.SessionId, session.CustomerAccountRefId,
+                "zentitle_purchase", cancellationToken);
+            if (references is null)
+            {
+                return null;
+            }
+
+            session.OrderRefId = references.OrderRefId;
+            session.ProviderSubscriptionRefId = references.SubscriptionRefId;
+        }
+
+        return await zentitle.LookupGroup(session.CustomerId, session.OrderRefId!, cancellationToken);
     }
 
     private static Dictionary<string, string> Metadata(ZentitlePendingCheckout checkout) =>
         new(StringComparer.Ordinal)
         {
-            ["order_ref_id"] = checkout.OrderRefId,
-            ["customer_ref"] = checkout.CustomerAccountRefId,
-            ["customer_name"] = checkout.CustomerName,
-            ["demo_session_id"] = checkout.SessionId,
-            ["billing_purpose"] = "zentitle_purchase"
+            [StripeMetadataKeys.CustomerRef] = checkout.CustomerAccountRefId,
+            [StripeMetadataKeys.CustomerName] = checkout.CustomerName,
+            [StripeMetadataKeys.DemoSessionId] = checkout.SessionId,
+            [StripeMetadataKeys.BillingPurpose] = "zentitle_purchase"
         };
 
     private static string BuildSuccessUrl(string url, string sessionId) =>

@@ -6,6 +6,12 @@ namespace NalpeironGrowthPlatformDemo.Application.Zenmeter;
 
 public interface IBillingCheckoutService
 {
+    Task<BillingReferenceResolution> ResolveSubscriptionReferences(
+        ZenmeterDemoSession session,
+        string? providerOrderRefId,
+        string? providerSubscriptionRefId,
+        CancellationToken cancellationToken);
+
     string? ConfigurationUnavailableReason(BillingSystem billingSystem);
 
     Task<BillingCheckoutResult> CreateCheckout(
@@ -18,6 +24,24 @@ public sealed class BillingCheckoutService(
     IEnumerable<IBillingCheckoutProvider> providers,
     IOptions<BillingOptions> billingOptions) : IBillingCheckoutService
 {
+    public Task<BillingReferenceResolution> ResolveSubscriptionReferences(
+        ZenmeterDemoSession session,
+        string? providerOrderRefId,
+        string? providerSubscriptionRefId,
+        CancellationToken cancellationToken)
+    {
+        var provider = providers.SingleOrDefault(provider => provider.BillingSystem == session.BillingSystem);
+        if (provider is null)
+        {
+            return Task.FromResult(BillingReferenceResolution.Failed(
+                $"Billing provider '{session.BillingSystem}' is not supported."));
+        }
+
+        return provider is IBillingProvisioningProvider provisioningProvider
+            ? provisioningProvider.ResolveSubscriptionReferences(session, providerOrderRefId, providerSubscriptionRefId, cancellationToken)
+            : Task.FromResult(BillingReferenceResolution.Ready());
+    }
+
     public string? ConfigurationUnavailableReason(BillingSystem billingSystem)
     {
         if (!billingOptions.Value.IsEnabled(billingSystem))
@@ -71,10 +95,11 @@ public sealed record BillingCheckoutResult(
     string Status,
     string? RedirectUrl = null,
     string? SubscriptionId = null,
-    string? SubscriptionRefId = null)
+    string? SubscriptionRefId = null,
+    string? ProviderCheckoutSessionId = null)
 {
-    public static BillingCheckoutResult Pending(string redirectUrl) =>
-        new(ZenmeterCheckoutStatuses.Pending, redirectUrl);
+    public static BillingCheckoutResult Pending(string redirectUrl, string? providerCheckoutSessionId = null) =>
+        new(ZenmeterCheckoutStatuses.Pending, redirectUrl, ProviderCheckoutSessionId: providerCheckoutSessionId);
 
     public static BillingCheckoutResult Completed(string subscriptionId, string? subscriptionRefId) =>
         new(ZenmeterCheckoutStatuses.Completed, SubscriptionId: subscriptionId, SubscriptionRefId: subscriptionRefId);

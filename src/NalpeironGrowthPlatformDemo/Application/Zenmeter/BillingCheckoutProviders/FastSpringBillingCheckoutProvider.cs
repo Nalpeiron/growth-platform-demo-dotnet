@@ -5,8 +5,15 @@ using NalpeironGrowthPlatformDemo.Configuration;
 namespace NalpeironGrowthPlatformDemo.Application.Zenmeter.BillingCheckoutProviders;
 
 public sealed class FastSpringBillingCheckoutProvider(
-    IOptions<BillingOptions> billingOptions) : IBillingCheckoutProvider
+    IOptions<BillingOptions> billingOptions) : IBillingCheckoutProvider, IBillingProvisioningProvider
 {
+    public Task<BillingReferenceResolution> ResolveSubscriptionReferences(
+        ZenmeterDemoSession session,
+        string? providerOrderRefId,
+        string? providerSubscriptionRefId,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(BillingReferenceResolution.Ready(providerOrderRefId, providerSubscriptionRefId));
+
     public BillingSystem BillingSystem => BillingSystem.FastSpring;
 
     public Task<BillingCheckoutResult> CreateCheckout(
