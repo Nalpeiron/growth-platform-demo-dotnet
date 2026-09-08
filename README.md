@@ -25,6 +25,58 @@ and Zenmeter price entries are used by their `default` (`None`) routes.
 > control in front of it. Anyone who can use the UI can create customers, entitlements,
 > subscriptions, activations, usage and add-ons in that tenant.
 
+## Quick Start: Direct Flow Without Stripe Or FastSpring
+
+Start with the direct `None` billing flow. It exercises the Nalpeiron integration without requiring
+a Stripe account, FastSpring account, external checkout or billing webhook.
+
+1. From the repository root, create the NuGet configuration used to restore the private
+   `Zenmeter.Consumption.Client` package:
+
+   ```powershell
+   Copy-Item src/NalpeironGrowthPlatformDemo/nuget.config.template nuget.config
+   ```
+
+   On macOS or Linux, use `cp` instead of `Copy-Item`. Fill `nuget.config` with package registry
+   credentials from `Administration -> API Credentials -> Package Registry` in Zentitle2.
+
+2. Create the untracked local application settings file:
+
+   ```powershell
+   Copy-Item src/NalpeironGrowthPlatformDemo/appsettings.Local.example.json `
+     src/NalpeironGrowthPlatformDemo/appsettings.Local.json
+   ```
+
+   Again, use `cp` on macOS or Linux. Fill in the `Nalpeiron` connection values,
+   `Zentitle:ProductId` and `Zenmeter:BusinessModelId`.
+
+3. Keep only the direct provider enabled. This is already the default in the example file:
+
+   ```json
+   {
+     "Billing": {
+       "DefaultBillingSystem": "None",
+       "EnabledBillingSystems": ["None"]
+     }
+   }
+   ```
+
+   Stripe and FastSpring credentials may remain empty.
+
+4. Start the application:
+
+   ```bash
+   dotnet run --project src/NalpeironGrowthPlatformDemo
+   ```
+
+5. Open the URL printed by Kestrel and use `/elevate/default` for Zentitle or
+   `/elevate/saas/default` for Zenmeter.
+
+`None` means direct provisioning without an external payment provider; it is not an offline or mock
+mode. These flows still call the live Nalpeiron Management API and create data in the configured
+tenant. Stripe and FastSpring buttons remain visible in the product picker, but their routes report
+that the provider is disabled until it is added to `EnabledBillingSystems`.
+
 ## Architecture
 
 The integration is organized as a **shared platform core + per-product slices**: one
@@ -39,14 +91,14 @@ Nalpeiron/
     CustomersClient            shared customers resource
   Zentitle/
     ZentitleManagementClient   offerings, entitlements, activations, feature checkout/return
-    ZentitleContracts          raw API DTO records
+    Generated/                 generated Management API client and DTOs
     PricingCatalog             offerings + edition features -> pricing read model
     LicensingEnums             FeatureKind / BillingPeriod parsing
     UpgradePolicy              trial -> paid, paid -> next edition
   Zenmeter/
     ZenmeterManagementClient   business model catalog, compatible add-ons, subscriptions, users, meters, features, consumption
+    Generated/                 generated Management API client and DTOs
     ZenmeterPricingCatalog     business model + compatible add-ons + selected billing prices -> pricing read model
-    BillingPriceProviders/     static no-billing and FastSpring price lookup providers
     ZenmeterEnums              period, add-on type, renewal behavior parsing
 Domain/
   ReferenceId                  _demo-z2- ids and length limits
@@ -141,9 +193,25 @@ Credentials to the Nalpeiron package registry can be created in the Zentitle2 in
 `nuget.config` with those generated package registry credentials before running `dotnet restore`,
 `dotnet build` or `dotnet test`.
 
-Standard ASP.NET Core layering applies. Committed defaults live in `appsettings.json`; local
-machine values can be placed in `src/NalpeironGrowthPlatformDemo/appsettings.Local.json`; deploys
-can use environment variables with the `__` separator.
+### Local Application Settings
+
+Before the first local run, create the untracked settings file from the committed template:
+
+```powershell
+Copy-Item src/NalpeironGrowthPlatformDemo/appsettings.Local.example.json `
+  src/NalpeironGrowthPlatformDemo/appsettings.Local.json
+```
+
+On macOS or Linux, use:
+
+```bash
+cp src/NalpeironGrowthPlatformDemo/appsettings.Local.example.json \
+  src/NalpeironGrowthPlatformDemo/appsettings.Local.json
+```
+
+Then fill in the tenant-specific values. Standard ASP.NET Core layering applies: committed defaults
+live in `appsettings.json`, local machine values live in `appsettings.Local.json`, and deploys can
+use environment variables with the `__` separator.
 
 Required live connection keys:
 
@@ -169,10 +237,28 @@ Optional keys commonly overridden per environment:
 - `Billing:Stripe:ZenmeterSuccessUrl` / `ZenmeterCancelUrl`
 - `Billing:Stripe:ZentitleSuccessUrl` / `ZentitleCancelUrl`
 
-The product picker and its configured provider variants are always visible in this sales demo, regardless
-of `EnabledBillingSystems` or whether external credentials have been filled in. Selecting a
-disabled or unconfigured provider intentionally leaves the user on the pricing page with a clear
-configuration error; it does not hide that demo variant.
+The base configuration and example `appsettings.Local.json` enable only the direct `None` provider,
+so a first local run does not need external credentials. The supplied Compose deployment enables
+all three providers; other deployment pipelines should explicitly configure the same enabled list.
+To enable only Stripe locally, list `None` and Stripe:
+
+```json
+{
+  "Billing": {
+    "DefaultBillingSystem": "None",
+    "EnabledBillingSystems": ["None", "Stripe"]
+  }
+}
+```
+
+Add FastSpring to the same list to use all providers locally. Stripe additionally needs its secret
+key and return URLs; FastSpring needs its API credentials and product-specific storefront URLs, as
+described below. Keep `DefaultBillingSystem` in the enabled list. An empty
+`EnabledBillingSystems` list falls back to all three providers for backward compatibility.
+
+The product picker and its configured provider variants remain visible regardless of
+`EnabledBillingSystems`. Selecting a disabled or unconfigured provider leaves the user on the
+pricing page with a clear configuration error; disabling a provider does not hide its demo button.
 
 The `Products` section is committed demo navigation copy. The `Zenmeter` section keeps the demo
 product name, business model id and no-billing fallback SKU prices only; tiers, offerings, rates
@@ -248,17 +334,16 @@ Copy `src/NalpeironGrowthPlatformDemo/appsettings.Local.example.json` to
 }
 ```
 
-The committed configuration enables all three billing systems. Provider buttons remain visible
-when credentials are missing so configuration errors can be demonstrated on-page; the enabled list
-controls whether an integration can resolve prices and start checkout. Both Zentitle and Zenmeter
-accept `default`, `stripe` and `fastspring`. `DefaultBillingSystem` only
-picks the provider used by the debug `/api/demo/zenmeter/pricing` endpoint:
+The enabled list controls whether an integration can resolve prices and start checkout. Both
+Zentitle and Zenmeter accept `default`, `stripe` and `fastspring`. `DefaultBillingSystem` only picks
+the provider used by the debug `/api/demo/zenmeter/pricing` endpoint. For example, this enables
+Stripe while leaving FastSpring disabled:
 
 ```json
 {
   "Billing": {
     "DefaultBillingSystem": "None",
-    "EnabledBillingSystems": ["None", "FastSpring", "Stripe"]
+    "EnabledBillingSystems": ["None", "Stripe"]
   }
 }
 ```
@@ -273,11 +358,12 @@ stripe --version
 stripe login
 ```
 
-Forward Stripe events to the Orion Stripe webhook URL configured for your tenant. The exact host
-depends on the environment associated with that tenant.
+Forward Stripe events to the Orion Stripe webhook URL configured for your tenant. Obtain the
+public integration host from the environment configuration or infrastructure owner; do not infer it
+from the tenant administration URL.
 
 ```bash
-stripe listen --forward-to https://[TENANT_NAME].nalpeiron.io/stripe/webhook
+stripe listen --forward-to https://[STRIPE_INTEGRATION_HOST]/stripe/webhook
 ```
 
 The Stripe CLI prints a webhook signing secret beginning with `whsec_`. In Orion, open the tenant
@@ -291,14 +377,6 @@ Otherwise the local Stripe host will reject forwarded events during signature va
 
 For the Zenmeter subscription purchase flow, the important Stripe event is the initial paid
 subscription invoice. Keep the `stripe listen` process running while testing checkout.
-
-Create local config:
-
-```bash
-cd src/NalpeironGrowthPlatformDemo
-copy appsettings.Local.example.json appsettings.Local.json
-# then edit appsettings.Local.json with your tenant values
-```
 
 If you prefer keeping the secret out of any file:
 
@@ -437,6 +515,8 @@ packages; it is excluded from the Docker build context and image layers.
 - `FASTSPRING_API_PASSWORD`
 
 Keep `.env.example` and `docker-compose.yml` aligned when these keys change.
+Unlike a local `dotnet run`, the supplied Compose configuration enables `None`, FastSpring and
+Stripe because it represents the complete sales-demo deployment.
 
 Build and start the application with:
 

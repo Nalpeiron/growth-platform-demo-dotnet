@@ -29,6 +29,11 @@ services:
       # Product routes are explicit; this only controls which provider Program.cs's Zenmeter
       # debug pricing endpoint uses when no billing system is specified.
       Billing__DefaultBillingSystem: "${BILLING_DEFAULT_SYSTEM:-None}"
+      # The containerized sales demo exposes every billing integration. Local dotnet runs default
+      # to the direct None flow; see README.md for enabling providers selectively.
+      Billing__EnabledBillingSystems__0: "None"
+      Billing__EnabledBillingSystems__1: "FastSpring"
+      Billing__EnabledBillingSystems__2: "Stripe"
       Billing__Stripe__ApiUrl: "${STRIPE_API_URL:-https://api.stripe.com}"
       Billing__Stripe__SecretKey: "${STRIPE_SECRET_KEY:-}"
       Billing__Stripe__ZenmeterSuccessUrl: "${STRIPE_ZENMETER_SUCCESS_URL:-http://localhost:5080/elevate/saas/billing/return}"
