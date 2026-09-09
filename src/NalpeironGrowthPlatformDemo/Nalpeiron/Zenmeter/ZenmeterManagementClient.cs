@@ -76,7 +76,7 @@ public sealed class ZenmeterManagementClient(IZenmeterManagementApiGeneratedClie
             new CreateSubscriptionApiRequest
             {
                 CustomerId = customerId,
-                Skus = skus.ToList(),
+                LineItems = ToLineItems(skus),
                 BillingReference = CreateBillingReference(orderRefId, billingSystem: null)
             },
             cancellationToken)!;
@@ -127,7 +127,7 @@ public sealed class ZenmeterManagementClient(IZenmeterManagementApiGeneratedClie
             subscriptionId,
             new AddSubscriptionAddonsApiRequest
             {
-                Skus = skus.ToList(),
+                LineItems = ToLineItems(skus),
                 BillingReference = CreateBillingReference(orderRefId, billingSystem)
             },
             cancellationToken);
@@ -215,4 +215,7 @@ public sealed class ZenmeterManagementClient(IZenmeterManagementApiGeneratedClie
             BillingSystem = apiBillingSystem
         };
     }
+
+    private static List<SubscriptionLineItemApiRequest> ToLineItems(IEnumerable<string> skus) =>
+        [.. skus.Select(sku => new SubscriptionLineItemApiRequest { Sku = sku, Quantity = 1 })];
 }

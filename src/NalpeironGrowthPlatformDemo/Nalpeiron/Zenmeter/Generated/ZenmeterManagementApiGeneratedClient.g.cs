@@ -30,6 +30,165 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     public partial interface IZenmeterManagementApiGeneratedClient
     {
         /// <summary>
+        /// Create webhook
+        /// </summary>
+        /// <remarks>
+        /// Creates tenant webhook
+        /// </remarks>
+        /// <returns>Resource created successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<WebhookModel> Webhooks_CreateAsync(CreateWebhookApiRequest model);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Create webhook
+        /// </summary>
+        /// <remarks>
+        /// Creates tenant webhook
+        /// </remarks>
+        /// <returns>Resource created successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<WebhookModel> Webhooks_CreateAsync(CreateWebhookApiRequest model, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Get list of webhooks
+        /// </summary>
+        /// <remarks>
+        /// Returns list of account webhooks
+        /// </remarks>
+        /// <param name="pageNumber">Requested page number</param>
+        /// <param name="pageSize">Maximum number of items per page</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PaginatedListOfWebhookModel> Webhooks_GetListAsync(int? pageNumber, int? pageSize);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get list of webhooks
+        /// </summary>
+        /// <remarks>
+        /// Returns list of account webhooks
+        /// </remarks>
+        /// <param name="pageNumber">Requested page number</param>
+        /// <param name="pageSize">Maximum number of items per page</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PaginatedListOfWebhookModel> Webhooks_GetListAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Get webhook
+        /// </summary>
+        /// <remarks>
+        /// Get account webhook by webhookId
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<WebhookModel> Webhooks_GetAsync(string webhookListenerId);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get webhook
+        /// </summary>
+        /// <remarks>
+        /// Get account webhook by webhookId
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<WebhookModel> Webhooks_GetAsync(string webhookListenerId, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Update webhook
+        /// </summary>
+        /// <remarks>
+        /// Updates account  webhook
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task Webhooks_UpdateAsync(string webhookListenerId, UpdateWebhookApiRequest model);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update webhook
+        /// </summary>
+        /// <remarks>
+        /// Updates account  webhook
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task Webhooks_UpdateAsync(string webhookListenerId, UpdateWebhookApiRequest model, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Delete webhook
+        /// </summary>
+        /// <remarks>
+        /// Deletes account webhook
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task Webhooks_DeleteAsync(string webhookListenerId);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Delete webhook
+        /// </summary>
+        /// <remarks>
+        /// Deletes account webhook
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task Webhooks_DeleteAsync(string webhookListenerId, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Test webhook listener
+        /// </summary>
+        /// <remarks>
+        /// Sends a test event to webhook URL
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task Webhooks_TestAsync(string webhookListenerId);
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Test webhook listener
+        /// </summary>
+        /// <remarks>
+        /// Sends a test event to webhook URL
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task Webhooks_TestAsync(string webhookListenerId, System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Get webhook events list
+        /// </summary>
+        /// <remarks>
+        /// Returns list of all available events
+        /// </remarks>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ListOfWebhookEventTypeModel> Webhooks_GetEventListAsync();
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get webhook events list
+        /// </summary>
+        /// <remarks>
+        /// Returns list of all available events
+        /// </remarks>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ListOfWebhookEventTypeModel> Webhooks_GetEventListAsync(System.Threading.CancellationToken cancellationToken);
+
+        /// <summary>
         /// Create customer
         /// </summary>
         /// <remarks>
@@ -269,9 +428,9 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Create a subscription
         /// </summary>
         /// <remarks>
-        /// Creates a Zenmeter subscription for the supplied customer and SKU list.
+        /// Creates a Zenmeter subscription for the supplied customer and line items.
         /// </remarks>
-        /// <param name="apiRequest">Request body with customer and SKUs to subscribe.</param>
+        /// <param name="apiRequest">Request body with customer and line items to subscribe.</param>
         /// <returns>The created subscription details.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SubscriptionModel> ZenmeterSubscriptions_CreateAsync(CreateSubscriptionApiRequest apiRequest);
@@ -281,9 +440,9 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Create a subscription
         /// </summary>
         /// <remarks>
-        /// Creates a Zenmeter subscription for the supplied customer and SKU list.
+        /// Creates a Zenmeter subscription for the supplied customer and line items.
         /// </remarks>
-        /// <param name="apiRequest">Request body with customer and SKUs to subscribe.</param>
+        /// <param name="apiRequest">Request body with customer and line items to subscribe.</param>
         /// <returns>The created subscription details.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<SubscriptionModel> ZenmeterSubscriptions_CreateAsync(CreateSubscriptionApiRequest apiRequest, System.Threading.CancellationToken cancellationToken);
@@ -347,7 +506,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Adds one or more add-on SKUs to an existing subscription.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="model">Request payload containing add-on SKUs.</param>
+        /// <param name="model">Request payload containing add-on SKUs and quantities.</param>
         /// <returns>Operation completed successfully.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task ZenmeterSubscriptions_AddAddonAsync(string subscriptionId, AddSubscriptionAddonsApiRequest model);
@@ -360,7 +519,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Adds one or more add-on SKUs to an existing subscription.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="model">Request payload containing add-on SKUs.</param>
+        /// <param name="model">Request payload containing add-on SKUs and quantities.</param>
         /// <returns>Operation completed successfully.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task ZenmeterSubscriptions_AddAddonAsync(string subscriptionId, AddSubscriptionAddonsApiRequest model, System.Threading.CancellationToken cancellationToken);
@@ -445,7 +604,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Changes the base offering of an existing Zenmeter subscription and reconciles add-ons and usage state.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="apiRequest">Request body with target base offering and add-on SKUs.</param>
+        /// <param name="apiRequest">Request body with target base offering and add-on quantities.</param>
         /// <returns>Operation completed successfully.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task ZenmeterSubscriptions_ChangeOfferingAsync(string subscriptionId, ChangeSubscriptionOfferingApiRequest apiRequest);
@@ -458,7 +617,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Changes the base offering of an existing Zenmeter subscription and reconciles add-ons and usage state.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="apiRequest">Request body with target base offering and add-on SKUs.</param>
+        /// <param name="apiRequest">Request body with target base offering and add-on quantities.</param>
         /// <returns>Operation completed successfully.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task ZenmeterSubscriptions_ChangeOfferingAsync(string subscriptionId, ChangeSubscriptionOfferingApiRequest apiRequest, System.Threading.CancellationToken cancellationToken);
@@ -470,7 +629,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Evaluates a proposed subscription composition without changing the subscription.
         /// <br/>            
         /// <br/>Include exactly one base offering SKU and every recurring add-on that should remain active.
-        /// <br/>An omitted recurring add-on is projected to expire. Each one-time add-on SKU requests a new
+        /// <br/>An omitted recurring add-on is projected to expire. Each one-time add-on line specifies the quantity for a new
         /// <br/>purchase; existing one-time add-ons are included in the preview automatically.
         /// <br/>            
         /// <br/>The complete composition is evaluated. If an add-on is incompatible, the preview still returns
@@ -478,7 +637,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// <br/>rejected with a projectedStatusReason.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="apiRequest">Complete target base offering and add-on SKU composition.</param>
+        /// <param name="apiRequest">Complete target base offering and add-on quantities.</param>
         /// <returns>Preview completed. Inspect canExecute and the add-on projections to determine whether
         /// <br/>             the supplied composition can currently be executed.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
@@ -492,7 +651,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Evaluates a proposed subscription composition without changing the subscription.
         /// <br/>            
         /// <br/>Include exactly one base offering SKU and every recurring add-on that should remain active.
-        /// <br/>An omitted recurring add-on is projected to expire. Each one-time add-on SKU requests a new
+        /// <br/>An omitted recurring add-on is projected to expire. Each one-time add-on line specifies the quantity for a new
         /// <br/>purchase; existing one-time add-ons are included in the preview automatically.
         /// <br/>            
         /// <br/>The complete composition is evaluated. If an add-on is incompatible, the preview still returns
@@ -500,7 +659,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// <br/>rejected with a projectedStatusReason.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="apiRequest">Complete target base offering and add-on SKU composition.</param>
+        /// <param name="apiRequest">Complete target base offering and add-on quantities.</param>
         /// <returns>Preview completed. Inspect canExecute and the add-on projections to determine whether
         /// <br/>             the supplied composition can currently be executed.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
@@ -997,6 +1156,1092 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         public Newtonsoft.Json.JsonSerializerSettings JsonSerializerSettings { get { return _instanceSettings ?? _settings.Value; } }
 
         partial void Initialize();
+
+        /// <summary>
+        /// Create webhook
+        /// </summary>
+        /// <remarks>
+        /// Creates tenant webhook
+        /// </remarks>
+        /// <returns>Resource created successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<WebhookModel> Webhooks_CreateAsync(CreateWebhookApiRequest model)
+        {
+            return Webhooks_CreateAsync(model, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Create webhook
+        /// </summary>
+        /// <remarks>
+        /// Creates tenant webhook
+        /// </remarks>
+        /// <returns>Resource created successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<WebhookModel> Webhooks_CreateAsync(CreateWebhookApiRequest model, System.Threading.CancellationToken cancellationToken)
+        {
+            if (model == null)
+                throw new System.ArgumentNullException("model");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = Newtonsoft.Json.JsonConvert.SerializeObject(model, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.StringContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/v1/account/webhooks"
+                    urlBuilder_.Append("api/v1/account/webhooks");
+
+                    await PrepareRequestAsync(client_, request_, urlBuilder_, cancellationToken).ConfigureAwait(false);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    await PrepareRequestAsync(client_, request_, url_, cancellationToken).ConfigureAwait(false);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        await ProcessResponseAsync(client_, response_, cancellationToken).ConfigureAwait(false);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<WebhookModel>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("Request body or parameters could not be parsed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 402)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was valid but could not be completed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The requested resource was not found.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request conflicts with the current state of the resource.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 422)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was parsed successfully but failed validation.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 500)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("An unexpected server error occurred.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ZenmeterManagementApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Get list of webhooks
+        /// </summary>
+        /// <remarks>
+        /// Returns list of account webhooks
+        /// </remarks>
+        /// <param name="pageNumber">Requested page number</param>
+        /// <param name="pageSize">Maximum number of items per page</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<PaginatedListOfWebhookModel> Webhooks_GetListAsync(int? pageNumber, int? pageSize)
+        {
+            return Webhooks_GetListAsync(pageNumber, pageSize, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get list of webhooks
+        /// </summary>
+        /// <remarks>
+        /// Returns list of account webhooks
+        /// </remarks>
+        /// <param name="pageNumber">Requested page number</param>
+        /// <param name="pageSize">Maximum number of items per page</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<PaginatedListOfWebhookModel> Webhooks_GetListAsync(int? pageNumber, int? pageSize, System.Threading.CancellationToken cancellationToken)
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/v1/account/webhooks"
+                    urlBuilder_.Append("api/v1/account/webhooks");
+                    urlBuilder_.Append('?');
+                    if (pageNumber != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (pageSize != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    await PrepareRequestAsync(client_, request_, urlBuilder_, cancellationToken).ConfigureAwait(false);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    await PrepareRequestAsync(client_, request_, url_, cancellationToken).ConfigureAwait(false);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        await ProcessResponseAsync(client_, response_, cancellationToken).ConfigureAwait(false);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<PaginatedListOfWebhookModel>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("Request body or parameters could not be parsed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 402)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was valid but could not be completed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The requested resource was not found.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request conflicts with the current state of the resource.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 422)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was parsed successfully but failed validation.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 500)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("An unexpected server error occurred.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ZenmeterManagementApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Get webhook
+        /// </summary>
+        /// <remarks>
+        /// Get account webhook by webhookId
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<WebhookModel> Webhooks_GetAsync(string webhookListenerId)
+        {
+            return Webhooks_GetAsync(webhookListenerId, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get webhook
+        /// </summary>
+        /// <remarks>
+        /// Get account webhook by webhookId
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<WebhookModel> Webhooks_GetAsync(string webhookListenerId, System.Threading.CancellationToken cancellationToken)
+        {
+            if (webhookListenerId == null)
+                throw new System.ArgumentNullException("webhookListenerId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/v1/account/webhooks/{webhookListenerId}"
+                    urlBuilder_.Append("api/v1/account/webhooks/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(webhookListenerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+                    await PrepareRequestAsync(client_, request_, urlBuilder_, cancellationToken).ConfigureAwait(false);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    await PrepareRequestAsync(client_, request_, url_, cancellationToken).ConfigureAwait(false);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        await ProcessResponseAsync(client_, response_, cancellationToken).ConfigureAwait(false);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<WebhookModel>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("Request body or parameters could not be parsed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 402)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was valid but could not be completed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The requested resource was not found.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request conflicts with the current state of the resource.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 422)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was parsed successfully but failed validation.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 500)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("An unexpected server error occurred.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ZenmeterManagementApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Update webhook
+        /// </summary>
+        /// <remarks>
+        /// Updates account  webhook
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task Webhooks_UpdateAsync(string webhookListenerId, UpdateWebhookApiRequest model)
+        {
+            return Webhooks_UpdateAsync(webhookListenerId, model, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update webhook
+        /// </summary>
+        /// <remarks>
+        /// Updates account  webhook
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task Webhooks_UpdateAsync(string webhookListenerId, UpdateWebhookApiRequest model, System.Threading.CancellationToken cancellationToken)
+        {
+            if (webhookListenerId == null)
+                throw new System.ArgumentNullException("webhookListenerId");
+
+            if (model == null)
+                throw new System.ArgumentNullException("model");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = Newtonsoft.Json.JsonConvert.SerializeObject(model, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.StringContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/v1/account/webhooks/{webhookListenerId}"
+                    urlBuilder_.Append("api/v1/account/webhooks/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(webhookListenerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+                    await PrepareRequestAsync(client_, request_, urlBuilder_, cancellationToken).ConfigureAwait(false);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    await PrepareRequestAsync(client_, request_, url_, cancellationToken).ConfigureAwait(false);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        await ProcessResponseAsync(client_, response_, cancellationToken).ConfigureAwait(false);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("Request body or parameters could not be parsed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 402)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was valid but could not be completed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The requested resource was not found.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request conflicts with the current state of the resource.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 422)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was parsed successfully but failed validation.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 500)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("An unexpected server error occurred.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ZenmeterManagementApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Delete webhook
+        /// </summary>
+        /// <remarks>
+        /// Deletes account webhook
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task Webhooks_DeleteAsync(string webhookListenerId)
+        {
+            return Webhooks_DeleteAsync(webhookListenerId, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Delete webhook
+        /// </summary>
+        /// <remarks>
+        /// Deletes account webhook
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task Webhooks_DeleteAsync(string webhookListenerId, System.Threading.CancellationToken cancellationToken)
+        {
+            if (webhookListenerId == null)
+                throw new System.ArgumentNullException("webhookListenerId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/v1/account/webhooks/{webhookListenerId}"
+                    urlBuilder_.Append("api/v1/account/webhooks/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(webhookListenerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+                    await PrepareRequestAsync(client_, request_, urlBuilder_, cancellationToken).ConfigureAwait(false);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    await PrepareRequestAsync(client_, request_, url_, cancellationToken).ConfigureAwait(false);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        await ProcessResponseAsync(client_, response_, cancellationToken).ConfigureAwait(false);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("Request body or parameters could not be parsed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 402)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was valid but could not be completed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The requested resource was not found.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request conflicts with the current state of the resource.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 422)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was parsed successfully but failed validation.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 500)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("An unexpected server error occurred.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ZenmeterManagementApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Test webhook listener
+        /// </summary>
+        /// <remarks>
+        /// Sends a test event to webhook URL
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task Webhooks_TestAsync(string webhookListenerId)
+        {
+            return Webhooks_TestAsync(webhookListenerId, System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Test webhook listener
+        /// </summary>
+        /// <remarks>
+        /// Sends a test event to webhook URL
+        /// </remarks>
+        /// <param name="webhookListenerId">Webhook Listener identifier</param>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task Webhooks_TestAsync(string webhookListenerId, System.Threading.CancellationToken cancellationToken)
+        {
+            if (webhookListenerId == null)
+                throw new System.ArgumentNullException("webhookListenerId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/v1/account/webhooks/{webhookListenerId}/test"
+                    urlBuilder_.Append("api/v1/account/webhooks/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(webhookListenerId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/test");
+
+                    await PrepareRequestAsync(client_, request_, urlBuilder_, cancellationToken).ConfigureAwait(false);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    await PrepareRequestAsync(client_, request_, url_, cancellationToken).ConfigureAwait(false);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        await ProcessResponseAsync(client_, response_, cancellationToken).ConfigureAwait(false);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("Request body or parameters could not be parsed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 402)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was valid but could not be completed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The requested resource was not found.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request conflicts with the current state of the resource.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 422)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was parsed successfully but failed validation.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 500)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("An unexpected server error occurred.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ZenmeterManagementApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Get webhook events list
+        /// </summary>
+        /// <remarks>
+        /// Returns list of all available events
+        /// </remarks>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual System.Threading.Tasks.Task<ListOfWebhookEventTypeModel> Webhooks_GetEventListAsync()
+        {
+            return Webhooks_GetEventListAsync(System.Threading.CancellationToken.None);
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get webhook events list
+        /// </summary>
+        /// <remarks>
+        /// Returns list of all available events
+        /// </remarks>
+        /// <returns>Operation completed successfully.</returns>
+        /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ListOfWebhookEventTypeModel> Webhooks_GetEventListAsync(System.Threading.CancellationToken cancellationToken)
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/v1/account/webhooks/events"
+                    urlBuilder_.Append("api/v1/account/webhooks/events");
+
+                    await PrepareRequestAsync(client_, request_, urlBuilder_, cancellationToken).ConfigureAwait(false);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    await PrepareRequestAsync(client_, request_, url_, cancellationToken).ConfigureAwait(false);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        await ProcessResponseAsync(client_, response_, cancellationToken).ConfigureAwait(false);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ListOfWebhookEventTypeModel>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("Request body or parameters could not be parsed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 402)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was valid but could not be completed.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The requested resource was not found.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request conflicts with the current state of the resource.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 422)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("The request was parsed successfully but failed validation.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 500)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ApiError>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ZenmeterManagementApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ZenmeterManagementApiException<ApiError>("An unexpected server error occurred.", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ZenmeterManagementApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
 
         /// <summary>
         /// Create customer
@@ -2579,9 +3824,9 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Create a subscription
         /// </summary>
         /// <remarks>
-        /// Creates a Zenmeter subscription for the supplied customer and SKU list.
+        /// Creates a Zenmeter subscription for the supplied customer and line items.
         /// </remarks>
-        /// <param name="apiRequest">Request body with customer and SKUs to subscribe.</param>
+        /// <param name="apiRequest">Request body with customer and line items to subscribe.</param>
         /// <returns>The created subscription details.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task<SubscriptionModel> ZenmeterSubscriptions_CreateAsync(CreateSubscriptionApiRequest apiRequest)
@@ -2594,9 +3839,9 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Create a subscription
         /// </summary>
         /// <remarks>
-        /// Creates a Zenmeter subscription for the supplied customer and SKU list.
+        /// Creates a Zenmeter subscription for the supplied customer and line items.
         /// </remarks>
-        /// <param name="apiRequest">Request body with customer and SKUs to subscribe.</param>
+        /// <param name="apiRequest">Request body with customer and line items to subscribe.</param>
         /// <returns>The created subscription details.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<SubscriptionModel> ZenmeterSubscriptions_CreateAsync(CreateSubscriptionApiRequest apiRequest, System.Threading.CancellationToken cancellationToken)
@@ -3073,7 +4318,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Adds one or more add-on SKUs to an existing subscription.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="model">Request payload containing add-on SKUs.</param>
+        /// <param name="model">Request payload containing add-on SKUs and quantities.</param>
         /// <returns>Operation completed successfully.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task ZenmeterSubscriptions_AddAddonAsync(string subscriptionId, AddSubscriptionAddonsApiRequest model)
@@ -3089,7 +4334,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Adds one or more add-on SKUs to an existing subscription.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="model">Request payload containing add-on SKUs.</param>
+        /// <param name="model">Request payload containing add-on SKUs and quantities.</param>
         /// <returns>Operation completed successfully.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task ZenmeterSubscriptions_AddAddonAsync(string subscriptionId, AddSubscriptionAddonsApiRequest model, System.Threading.CancellationToken cancellationToken)
@@ -3703,7 +4948,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Changes the base offering of an existing Zenmeter subscription and reconciles add-ons and usage state.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="apiRequest">Request body with target base offering and add-on SKUs.</param>
+        /// <param name="apiRequest">Request body with target base offering and add-on quantities.</param>
         /// <returns>Operation completed successfully.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         public virtual System.Threading.Tasks.Task ZenmeterSubscriptions_ChangeOfferingAsync(string subscriptionId, ChangeSubscriptionOfferingApiRequest apiRequest)
@@ -3719,7 +4964,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Changes the base offering of an existing Zenmeter subscription and reconciles add-ons and usage state.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="apiRequest">Request body with target base offering and add-on SKUs.</param>
+        /// <param name="apiRequest">Request body with target base offering and add-on quantities.</param>
         /// <returns>Operation completed successfully.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task ZenmeterSubscriptions_ChangeOfferingAsync(string subscriptionId, ChangeSubscriptionOfferingApiRequest apiRequest, System.Threading.CancellationToken cancellationToken)
@@ -3863,7 +5108,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Evaluates a proposed subscription composition without changing the subscription.
         /// <br/>            
         /// <br/>Include exactly one base offering SKU and every recurring add-on that should remain active.
-        /// <br/>An omitted recurring add-on is projected to expire. Each one-time add-on SKU requests a new
+        /// <br/>An omitted recurring add-on is projected to expire. Each one-time add-on line specifies the quantity for a new
         /// <br/>purchase; existing one-time add-ons are included in the preview automatically.
         /// <br/>            
         /// <br/>The complete composition is evaluated. If an add-on is incompatible, the preview still returns
@@ -3871,7 +5116,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// <br/>rejected with a projectedStatusReason.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="apiRequest">Complete target base offering and add-on SKU composition.</param>
+        /// <param name="apiRequest">Complete target base offering and add-on quantities.</param>
         /// <returns>Preview completed. Inspect canExecute and the add-on projections to determine whether
         /// <br/>             the supplied composition can currently be executed.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
@@ -3888,7 +5133,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// Evaluates a proposed subscription composition without changing the subscription.
         /// <br/>            
         /// <br/>Include exactly one base offering SKU and every recurring add-on that should remain active.
-        /// <br/>An omitted recurring add-on is projected to expire. Each one-time add-on SKU requests a new
+        /// <br/>An omitted recurring add-on is projected to expire. Each one-time add-on line specifies the quantity for a new
         /// <br/>purchase; existing one-time add-ons are included in the preview automatically.
         /// <br/>            
         /// <br/>The complete composition is evaluated. If an add-on is incompatible, the preview still returns
@@ -3896,7 +5141,7 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// <br/>rejected with a projectedStatusReason.
         /// </remarks>
         /// <param name="subscriptionId">Subscription identifier</param>
-        /// <param name="apiRequest">Complete target base offering and add-on SKU composition.</param>
+        /// <param name="apiRequest">Complete target base offering and add-on quantities.</param>
         /// <returns>Preview completed. Inspect canExecute and the add-on projections to determine whether
         /// <br/>             the supplied composition can currently be executed.</returns>
         /// <exception cref="ZenmeterManagementApiException">A server side error occurred.</exception>
@@ -7177,10 +8422,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     {
 
         /// <summary>
-        /// Add-on offering SKUs to attach to an existing subscription.
+        /// Ordered add-on offering SKUs and quantities to attach to the subscription.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("skus", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public System.Collections.Generic.ICollection<string>? Skus { get; set; } = default!;
+        [Newtonsoft.Json.JsonProperty("lineItems", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(1)]
+        public System.Collections.Generic.ICollection<SubscriptionLineItemApiRequest> LineItems { get; set; } = new System.Collections.ObjectModel.Collection<SubscriptionLineItemApiRequest>();
 
         /// <summary>
         /// Optional external billing reference shared by all requested add-ons.
@@ -7726,12 +8973,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     {
 
         /// <summary>
-        /// Requested target base offering and add-on SKUs.
+        /// Ordered target base offering and add-on quantities. Omitted recurring add-ons expire; one-time add-ons represent new purchases.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("skus", Required = Newtonsoft.Json.Required.Always)]
+        [Newtonsoft.Json.JsonProperty("lineItems", Required = Newtonsoft.Json.Required.Always)]
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.MinLength(1)]
-        public System.Collections.Generic.ICollection<string> Skus { get; set; } = new System.Collections.ObjectModel.Collection<string>();
+        public System.Collections.Generic.ICollection<SubscriptionLineItemApiRequest> LineItems { get; set; } = new System.Collections.ObjectModel.Collection<SubscriptionLineItemApiRequest>();
 
     }
 
@@ -7923,10 +9170,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     {
 
         /// <summary>
-        /// SKUs to subscribe the customer to.
+        /// Ordered offering SKUs and quantities to subscribe the customer to.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("skus", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public System.Collections.Generic.ICollection<string>? Skus { get; set; } = default!;
+        [Newtonsoft.Json.JsonProperty("lineItems", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(1)]
+        public System.Collections.Generic.ICollection<SubscriptionLineItemApiRequest> LineItems { get; set; } = new System.Collections.ObjectModel.Collection<SubscriptionLineItemApiRequest>();
 
         /// <summary>
         /// Identifier of the customer that owns the subscription.
@@ -7982,6 +9231,28 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         [Newtonsoft.Json.JsonProperty("email", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         [System.ComponentModel.DataAnnotations.StringLength(100)]
         public string? Email { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class CreateWebhookApiRequest
+    {
+
+        /// <summary>
+        /// Webhook uri
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("uri", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(2048, MinimumLength = 1)]
+        public string Uri { get; set; } = default!;
+
+        /// <summary>
+        /// Array of webhook event subscription codes
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptions", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(1)]
+        public System.Collections.Generic.ICollection<string> Subscriptions { get; set; } = new System.Collections.ObjectModel.Collection<string>();
 
     }
 
@@ -8185,6 +9456,27 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
 
     }
 
+    /// <summary>
+    /// Webhook model for notifying that a customer has been created
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class CustomerCreatedWebhookModel
+    {
+
+        /// <summary>
+        /// Customer identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("customerId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string CustomerId { get; set; } = default!;
+
+        /// <summary>
+        /// Customer name
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("name", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Name { get; set; } = default!;
+
+    }
+
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class CustomerListModel
     {
@@ -8381,6 +9673,54 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
 
     }
 
+    /// <summary>
+    /// Webhook model for notifying that a customer has been updated
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class CustomerUpdatedWebhookModel
+    {
+
+        /// <summary>
+        /// Customer identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("customerId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string CustomerId { get; set; } = default!;
+
+        /// <summary>
+        /// Customer name
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("name", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Name { get; set; } = default!;
+
+        /// <summary>
+        /// True of the customer is disabled
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("disabled", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public bool Disabled { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum EventType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"entitlementGroup")]
+        EntitlementGroup = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"entitlement")]
+        Entitlement = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"customer")]
+        Customer = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"insight")]
+        Insight = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"zenmeterSubscription")]
+        ZenmeterSubscription = 4,
+
+    }
+
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ExternalUserIdReferenceModel : SubscriptionUserReferenceModel
     {
@@ -8529,6 +9869,24 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
 
         [System.Runtime.Serialization.EnumMember(Value = @"second")]
         Second = 7,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ListOfWebhookEventTypeModel
+    {
+
+        /// <summary>
+        /// Array of items matching specified query filters
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<WebhookEventTypeModel> Items { get; set; } = default!;
+
+        /// <summary>
+        /// Total number of elements matching filter criteria
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("elementsTotal", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int ElementsTotal { get; set; } = default!;
 
     }
 
@@ -8800,14 +10158,8 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     public enum OverageCapMode
     {
 
-        [System.Runtime.Serialization.EnumMember(Value = @"unlimited")]
-        Unlimited = 0,
-
         [System.Runtime.Serialization.EnumMember(Value = @"absolute")]
-        Absolute = 1,
-
-        [System.Runtime.Serialization.EnumMember(Value = @"percentage")]
-        Percentage = 2,
+        Absolute = 0,
 
     }
 
@@ -8984,6 +10336,36 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
 
     }
 
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class PaginatedListOfWebhookModel
+    {
+
+        /// <summary>
+        /// Array of items matching specified query filters
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.Collections.Generic.ICollection<WebhookModel> Items { get; set; } = default!;
+
+        /// <summary>
+        /// Requested page size or default page size if not specified
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("pageSize", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageSize { get; set; } = default!;
+
+        /// <summary>
+        /// Requested page number or first page if not specified
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("pageNumber", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int PageNumber { get; set; } = default!;
+
+        /// <summary>
+        /// Total number of elements matching filter criteria
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("elementsTotal", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int ElementsTotal { get; set; } = default!;
+
+    }
+
     /// <summary>
     /// Request payload containing the proposed offering composition for a Zenmeter subscription.
     /// </summary>
@@ -8992,14 +10374,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     {
 
         /// <summary>
-        /// Exactly one base offering SKU and one entry for each recurring add-on to retain or add.
-        /// <br/>Omit recurring add-ons that should expire. Include a one-time add-on SKU once for each new
-        /// <br/>purchase; do not include existing one-time add-ons unless purchasing another instance.
+        /// Ordered target base offering and add-on quantities. Omitted recurring add-ons expire; one-time add-ons represent new purchases.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("skus", Required = Newtonsoft.Json.Required.Always)]
+        [Newtonsoft.Json.JsonProperty("lineItems", Required = Newtonsoft.Json.Required.Always)]
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.MinLength(1)]
-        public System.Collections.Generic.ICollection<string> Skus { get; set; } = new System.Collections.ObjectModel.Collection<string>();
+        public System.Collections.Generic.ICollection<SubscriptionLineItemApiRequest> LineItems { get; set; } = new System.Collections.ObjectModel.Collection<SubscriptionLineItemApiRequest>();
 
     }
 
@@ -9173,6 +10553,112 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
 
     }
 
+    /// <summary>
+    /// Webhook model for notifying that cancellation of a Zenmeter subscription has been requested
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionCanceledWebhookModel
+    {
+
+        /// <summary>
+        /// Subscription identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string SubscriptionId { get; set; } = default!;
+
+        /// <summary>
+        /// Date when cancellation was requested
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("canceledAt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset CanceledAt { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription expires
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("expiryDate", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ExpiryDate { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Webhook model for notifying that a pending Zenmeter subscription cancellation has been reverted
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionCancellationRevertedWebhookModel
+    {
+
+        /// <summary>
+        /// Subscription identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string SubscriptionId { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the pending cancellation was reverted
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("revertedAt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset RevertedAt { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription expires
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("expiryDate", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ExpiryDate { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Webhook model for notifying that a Zenmeter subscription has been created
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionCreatedWebhookModel
+    {
+
+        /// <summary>
+        /// Subscription identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string SubscriptionId { get; set; } = default!;
+
+        /// <summary>
+        /// Customer associated with the subscription
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("customerId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string? CustomerId { get; set; } = default!;
+
+        /// <summary>
+        /// External order reference associated with the subscription
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("orderRefId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string? OrderRefId { get; set; } = default!;
+
+        /// <summary>
+        /// SKU of the subscription offering
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("sku", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Sku { get; set; } = default!;
+
+        /// <summary>
+        /// Commercial plan type of the subscription
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("planType", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+        public ZenmeterPlanType PlanType { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription expires
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("expiryDate", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ExpiryDate { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription was created
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("createdAt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+
+    }
+
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class SubscriptionCustomerModel
     {
@@ -9194,6 +10680,27 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// </summary>
         [Newtonsoft.Json.JsonProperty("accountRefId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string? AccountRefId { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Webhook model for notifying that a Zenmeter subscription has expired
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionExpiredWebhookModel
+    {
+
+        /// <summary>
+        /// Subscription identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string SubscriptionId { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription expired
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("expiredAt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ExpiredAt { get; set; } = default!;
 
     }
 
@@ -9246,6 +10753,54 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// </summary>
         [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public System.Collections.Generic.ICollection<SubscriptionFeatureListItemModel> Items { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Webhook model for notifying that a Zenmeter subscription has entered its grace period
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionGracePeriodStartedWebhookModel
+    {
+
+        /// <summary>
+        /// Subscription identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string SubscriptionId { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription entered its grace period, which is the date its commercial period expired
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("startedAt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset StartedAt { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription grace period expires
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("gracePeriodExpiry", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset GracePeriodExpiry { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionLineItemApiRequest
+    {
+
+        /// <summary>
+        /// Offering SKU.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("sku", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(50, MinimumLength = 1)]
+        public string Sku { get; set; } = default!;
+
+        /// <summary>
+        /// Number of logical units represented by this line item.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("quantity", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Range(1, 2147483647)]
+        public int Quantity { get; set; } = default!;
 
     }
 
@@ -9494,6 +11049,33 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     }
 
     /// <summary>
+    /// Webhook model for notifying that a Zenmeter subscription has been renewed
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionRenewedWebhookModel
+    {
+
+        /// <summary>
+        /// Subscription identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string SubscriptionId { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription was renewed
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("renewedAt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset RenewedAt { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the renewed subscription expires
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("expiryDate", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ExpiryDate { get; set; } = default!;
+
+    }
+
+    /// <summary>
     /// Lifecycle state of a Zenmeter subscription.
     /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -9557,6 +11139,66 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// </summary>
         [Newtonsoft.Json.JsonProperty("trial", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public bool Trial { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Webhook model for notifying that a Zenmeter trial subscription has been converted to paid
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionTrialConvertedWebhookModel
+    {
+
+        /// <summary>
+        /// Subscription identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string SubscriptionId { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the trial was converted to paid
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("convertedAt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ConvertedAt { get; set; } = default!;
+
+        /// <summary>
+        /// SKU of the paid subscription offering
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("sku", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Sku { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the paid subscription expires
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("expiryDate", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ExpiryDate { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Webhook model for notifying that a Zenmeter subscription trial has been extended
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SubscriptionTrialExtendedWebhookModel
+    {
+
+        /// <summary>
+        /// Subscription identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string SubscriptionId { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the subscription trial was extended
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("extendedAt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ExtendedAt { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the extended subscription trial expires
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("expiryDate", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset ExpiryDate { get; set; } = default!;
 
     }
 
@@ -9959,6 +11601,28 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class UpdateWebhookApiRequest
+    {
+
+        /// <summary>
+        /// Webhook uri
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("uri", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(2048, MinimumLength = 1)]
+        public string Uri { get; set; } = default!;
+
+        /// <summary>
+        /// Array of webhook events subscription codes
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptions", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(1)]
+        public System.Collections.Generic.ICollection<string> Subscriptions { get; set; } = new System.Collections.ObjectModel.Collection<string>();
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UsageGrantModel
     {
 
@@ -10019,6 +11683,258 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
 
         [Newtonsoft.Json.JsonProperty("code", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string? Code { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookEventTypeModel
+    {
+
+        /// <summary>
+        /// Webhook event type
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+        public EventType Type { get; set; } = default!;
+
+        /// <summary>
+        /// Webhook event code
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("code", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Code { get; set; } = default!;
+
+        /// <summary>
+        /// Webhook event description
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("description", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Description { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModel
+    {
+
+        /// <summary>
+        /// Id of an webhook in the system
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Id { get; set; } = default!;
+
+        /// <summary>
+        /// Webhook uri
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("uri", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [System.ComponentModel.DataAnnotations.StringLength(2048)]
+        public System.Uri Uri { get; set; } = default!;
+
+        /// <summary>
+        /// Array of webhook events
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptions", Required = Newtonsoft.Json.Required.Always)]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> Subscriptions { get; set; } = new System.Collections.ObjectModel.Collection<string>();
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public abstract partial class WebhookModelBase
+    {
+
+        /// <summary>
+        /// Event identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("eventId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string EventId { get; set; } = default!;
+
+        /// <summary>
+        /// Date when the event occurred
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("eventDate", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public System.DateTimeOffset EventDate { get; set; } = default!;
+
+        /// <summary>
+        /// Code specifying the Webhook event type
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("eventCode", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string EventCode { get; set; } = default!;
+
+        /// <summary>
+        /// Identifier of the related resource
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("resourceId", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string ResourceId { get; set; } = default!;
+
+        /// <summary>
+        /// Number of times the webhook has been attempted
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("callAttempt", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int CallAttempt { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfCustomerCreatedWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public CustomerCreatedWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfCustomerUpdatedWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public CustomerUpdatedWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfSubscriptionCanceledWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public SubscriptionCanceledWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfSubscriptionCancellationRevertedWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public SubscriptionCancellationRevertedWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfSubscriptionCreatedWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public SubscriptionCreatedWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfSubscriptionExpiredWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public SubscriptionExpiredWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfSubscriptionGracePeriodStartedWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public SubscriptionGracePeriodStartedWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfSubscriptionRenewedWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public SubscriptionRenewedWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfSubscriptionTrialConvertedWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public SubscriptionTrialConvertedWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// General representation of a webhook event
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class WebhookModelOfSubscriptionTrialExtendedWebhookModel : WebhookModelBase
+    {
+
+        /// <summary>
+        /// Payload specific to the webhook event
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("payload", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public SubscriptionTrialExtendedWebhookModel? Payload { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ZenmeterPlanType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"trial")]
+        Trial = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"paid")]
+        Paid = 1,
 
     }
 
