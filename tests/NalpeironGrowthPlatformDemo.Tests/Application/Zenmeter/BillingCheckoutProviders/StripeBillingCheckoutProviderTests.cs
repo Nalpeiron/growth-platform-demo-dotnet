@@ -1,5 +1,7 @@
 using System.Net;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter;
 using NalpeironGrowthPlatformDemo.Application.Shared.Billing.Stripe;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter.BillingCheckoutProviders;
@@ -11,6 +13,85 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zenmeter.BillingCheckout
 
 public sealed class StripeBillingCheckoutProviderTests
 {
+    [Fact]
+    public async Task ResolveSubscriptionReferences_WithStoredCheckout_UsesVerifiedReferences()
+    {
+        // arrange
+        var session = Session();
+        var resolver = new Mock<IStripeSubscriptionCheckoutResolver>(MockBehavior.Strict);
+        resolver.Setup(x => x.Resolve("cs_1", "session-1", "account-ref-1", "subscription_purchase", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StripeSubscriptionCheckoutReferences("in_1", "sub_1"));
+        var provider = CreateProvider(new RecordingStripeHandler([]), checkoutResolver: resolver.Object);
+
+        // act
+        var result = await provider.ResolveSubscriptionReferences(session, null, "untrusted-subscription", CancellationToken.None);
+
+        // assert
+        Assert.Equal(BillingReferenceResolution.Ready("in_1", "sub_1", "cs_1"), result);
+        Assert.Null(session.SubscriptionRefId);
+        resolver.VerifyAll();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ResolveSubscriptionReferences_WithUnverifiedCheckout_ReturnsPendingOrFailed(bool rejected)
+    {
+        // arrange
+        var resolver = new Mock<IStripeSubscriptionCheckoutResolver>();
+        var setup = resolver.Setup(x => x.Resolve("cs_1", "session-1", "account-ref-1", "subscription_purchase", It.IsAny<CancellationToken>()));
+        if (rejected)
+        {
+            setup.ThrowsAsync(new InvalidOperationException("Mismatched checkout"));
+        }
+        else
+        {
+            setup.ReturnsAsync((StripeSubscriptionCheckoutReferences?)null);
+        }
+        var provider = CreateProvider(new RecordingStripeHandler([]), checkoutResolver: resolver.Object);
+
+        // act
+        var result = await provider.ResolveSubscriptionReferences(Session(), null, null, CancellationToken.None);
+
+        // assert
+        Assert.Equal(rejected ? BillingReferenceResolutionStatus.Failed : BillingReferenceResolutionStatus.Pending, result.Status);
+        Assert.Null(result.OrderRefId);
+        Assert.Null(result.SubscriptionRefId);
+    }
+
+    [Fact]
+    public async Task ResolveSubscriptionReferences_WithDifferentCheckout_RejectsReturnBeforeStripeRequest()
+    {
+        // arrange
+        var resolver = new Mock<IStripeSubscriptionCheckoutResolver>(MockBehavior.Strict);
+        var provider = CreateProvider(new RecordingStripeHandler([]), checkoutResolver: resolver.Object);
+
+        // act
+        var result = await provider.ResolveSubscriptionReferences(Session(), "cs_other", null, CancellationToken.None);
+
+        // assert
+        Assert.Equal(BillingReferenceResolutionStatus.Failed, result.Status);
+        resolver.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task ResolveSubscriptionReferences_WithPreviouslyVerifiedSubscription_DoesNotRepeatStripeRequest()
+    {
+        // arrange
+        var session = Session();
+        session.OrderRefId = "in_1";
+        session.SubscriptionRefId = "sub_1";
+        var resolver = new Mock<IStripeSubscriptionCheckoutResolver>(MockBehavior.Strict);
+        var provider = CreateProvider(new RecordingStripeHandler([]), checkoutResolver: resolver.Object);
+
+        // act
+        var result = await provider.ResolveSubscriptionReferences(session, null, null, CancellationToken.None);
+
+        // assert
+        Assert.Equal(BillingReferenceResolution.Ready(), result);
+        resolver.VerifyNoOtherCalls();
+    }
+
     [Fact]
     public async Task CreateCheckout_WithInvalidZenmeterUrl_ThrowsBeforeCallingStripe()
     {
@@ -40,7 +121,7 @@ public sealed class StripeBillingCheckoutProviderTests
                 """{"data":[{"id":"price_1","lookup_key":"elevate-saas-launch-monthly","unit_amount":4900,"currency":"usd"}]}"""),
             new(HttpMethod.Get, "/v1/customers/search", """{"data":[{"id":"cus_existing"}]}"""),
             new(HttpMethod.Post, "/v1/customers/cus_existing", """{"id":"cus_existing"}"""),
-            new(HttpMethod.Post, "/v1/checkout/sessions", """{"url":"https://checkout.stripe.test/session"}""")
+            new(HttpMethod.Post, "/v1/checkout/sessions", """{"id":"cs_1","url":"https://checkout.stripe.test/session"}""")
         ]);
         var provider = CreateProvider(handler);
         var checkout = BillingCheckoutTestData.CreateCheckout();
@@ -58,7 +139,11 @@ public sealed class StripeBillingCheckoutProviderTests
 
         var checkoutRequest = Assert.Single(handler.Requests, request => request.Path == "/v1/checkout/sessions");
         Assert.Equal("cus_existing", checkoutRequest.Form["customer"]);
-        Assert.Equal("order-1", checkoutRequest.Form["subscription_data[metadata][order_ref_id]"]);
+        Assert.False(checkoutRequest.Form.ContainsKey("subscription_data[metadata][order_ref_id]"));
+        Assert.False(checkoutRequest.Form.ContainsKey("metadata[order_ref_id]"));
+        Assert.Equal("cs_1", result.ProviderCheckoutSessionId);
+        Assert.Contains("providerOrderRefId={CHECKOUT_SESSION_ID}", checkoutRequest.Form["success_url"]);
+        Assert.Equal(checkout.SessionId, checkoutRequest.Form["subscription_data[metadata][demo_session_id]"]);
         Assert.Equal("account-ref-1", checkoutRequest.Form["subscription_data[metadata][customer_ref]"]);
         Assert.False(checkoutRequest.Form.ContainsKey("subscription_data[metadata][user_ref]"));
     }
@@ -72,7 +157,7 @@ public sealed class StripeBillingCheckoutProviderTests
                 """{"data":[{"id":"price_base","lookup_key":"base-sku","unit_amount":4900,"currency":"usd"},{"id":"price_recurring_addon","lookup_key":"recurring-addon-sku","unit_amount":2900,"currency":"usd"},{"id":"price_one_time_addon","lookup_key":"one-time-addon-sku","unit_amount":1500,"currency":"usd"}]}"""),
             new(HttpMethod.Get, "/v1/customers/search", """{"data":[{"id":"cus_existing"}]}"""),
             new(HttpMethod.Post, "/v1/customers/cus_existing", """{"id":"cus_existing"}"""),
-            new(HttpMethod.Post, "/v1/checkout/sessions", """{"url":"https://checkout.stripe.test/session"}""")
+            new(HttpMethod.Post, "/v1/checkout/sessions", """{"id":"cs_1","url":"https://checkout.stripe.test/session"}""")
         ]);
         var provider = CreateProvider(handler);
         var checkout = BillingCheckoutTestData.CreateCheckout([
@@ -102,7 +187,7 @@ public sealed class StripeBillingCheckoutProviderTests
             new(HttpMethod.Get, "/v1/customers/search", """{"data":[]}"""),
             new(HttpMethod.Get, "/v1/customers/search", """{"data":[]}"""),
             new(HttpMethod.Post, "/v1/customers", """{"id":"cus_new"}"""),
-            new(HttpMethod.Post, "/v1/checkout/sessions", """{"url":"https://checkout.stripe.test/session"}""")
+            new(HttpMethod.Post, "/v1/checkout/sessions", """{"id":"cs_1","url":"https://checkout.stripe.test/session"}""")
         ]);
         var provider = CreateProvider(handler);
         var checkout = BillingCheckoutTestData.CreateCheckout();
@@ -133,7 +218,7 @@ public sealed class StripeBillingCheckoutProviderTests
             new(HttpMethod.Get, "/v1/customers/search", """{"data":[]}"""),
             new(HttpMethod.Get, "/v1/customers/search", """{"data":[{"id":"cus_legacy"}]}"""),
             new(HttpMethod.Post, "/v1/customers/cus_legacy", """{"id":"cus_legacy"}"""),
-            new(HttpMethod.Post, "/v1/checkout/sessions", """{"url":"https://checkout.stripe.test/session"}""")
+            new(HttpMethod.Post, "/v1/checkout/sessions", """{"id":"cs_1","url":"https://checkout.stripe.test/session"}""")
         ]);
         var provider = CreateProvider(handler);
 
@@ -168,7 +253,7 @@ public sealed class StripeBillingCheckoutProviderTests
                 """{"data":[{"id":"price_topup","lookup_key":"credits-50k-onetime","unit_amount":2900,"currency":"usd"}]}"""),
             new(HttpMethod.Get, "/v1/customers/search", """{"data":[{"id":"cus_existing"}]}"""),
             new(HttpMethod.Post, "/v1/customers/cus_existing", """{"id":"cus_existing"}"""),
-            new(HttpMethod.Post, "/v1/checkout/sessions", """{"url":"https://checkout.stripe.test/topup"}""")
+            new(HttpMethod.Post, "/v1/checkout/sessions", """{"id":"cs_1","url":"https://checkout.stripe.test/topup"}""")
         ]);
         var provider = CreateProvider(handler);
         var checkout = BillingCheckoutTestData.CreateCheckout(["credits-50k-onetime"]) with
@@ -187,6 +272,7 @@ public sealed class StripeBillingCheckoutProviderTests
         var request = Assert.Single(handler.Requests, candidate => candidate.Path == "/v1/checkout/sessions");
         Assert.Equal("payment", request.Form["mode"]);
         Assert.Equal("top_up", request.Form["metadata[billing_purpose]"]);
+        Assert.Equal(checkout.OrderRefId, request.Form["metadata[order_ref_id]"]);
         Assert.Equal("topup-1", request.Form["metadata[top_up_operation_id]"]);
         Assert.Equal("credits-50k-onetime", request.Form["metadata[top_up_sku]"]);
         Assert.Equal("session-1", request.Form["metadata[demo_session_id]"]);
@@ -197,9 +283,22 @@ public sealed class StripeBillingCheckoutProviderTests
         Assert.EndsWith("/elevate/saas/workspace", request.Form["cancel_url"]);
     }
 
+    private static ZenmeterDemoSession Session() => new()
+    {
+        SessionId = "session-1",
+        CustomerName = "Acme",
+        TierKey = "scale",
+        PlanSku = "sku-1",
+        Period = NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.ZenmeterOfferingPeriod.Monthly,
+        BillingSystem = BillingSystem.Stripe,
+        CustomerAccountRefId = "account-ref-1",
+        ProviderCheckoutSessionId = "cs_1"
+    };
+
     private static StripeBillingCheckoutProvider CreateProvider(
         RecordingStripeHandler handler,
-        BillingOptions? billingOptions = null)
+        BillingOptions? billingOptions = null,
+        IStripeSubscriptionCheckoutResolver? checkoutResolver = null)
     {
         var httpClientFactory = new TestHttpClientFactory(new HttpClient(handler));
         var options = Options.Create(billingOptions ?? BillingCheckoutTestData.CreateBillingOptions());
@@ -208,7 +307,9 @@ public sealed class StripeBillingCheckoutProviderTests
             options,
             new StripeBillingPriceProvider(clientFactory),
             clientFactory,
-            new StripeBillingCustomerService(clientFactory));
+            new StripeBillingCustomerService(clientFactory),
+            checkoutResolver ?? Mock.Of<IStripeSubscriptionCheckoutResolver>(),
+            NullLogger<StripeBillingCheckoutProvider>.Instance);
     }
 
     private sealed class RecordingStripeHandler(IReadOnlyList<StripeResponse> responses) : HttpMessageHandler

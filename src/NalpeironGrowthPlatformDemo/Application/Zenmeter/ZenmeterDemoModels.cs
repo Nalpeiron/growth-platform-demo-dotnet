@@ -22,6 +22,7 @@ public sealed class ZenmeterDemoSession
     public ZenmeterUserDetails User { get; init; } = ZenmeterUserDetails.Empty;
     public string? OrderRefId { get; set; }
     public string? SubscriptionRefId { get; set; }
+    public string? ProviderCheckoutSessionId { get; set; }
     public string CheckoutStatus { get; set; } = ZenmeterCheckoutStatuses.Completed;
     public ZenmeterPendingTopUp? PendingTopUp { get; set; }
     public Dictionary<string, ZenmeterMeterUsageSnapshot> MeterUsage { get; } = new(StringComparer.OrdinalIgnoreCase);

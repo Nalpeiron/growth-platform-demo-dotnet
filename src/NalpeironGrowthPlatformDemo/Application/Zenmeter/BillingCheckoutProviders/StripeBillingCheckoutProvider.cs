@@ -10,8 +10,52 @@ public sealed class StripeBillingCheckoutProvider(
     IOptions<BillingOptions> billingOptions,
     StripeBillingPriceProvider priceProvider,
     StripeBillingClientFactory clientFactory,
-    StripeBillingCustomerService customerService) : IBillingCheckoutProvider
+    StripeBillingCustomerService customerService,
+    IStripeSubscriptionCheckoutResolver checkoutResolver,
+    ILogger<StripeBillingCheckoutProvider> logger) : IBillingCheckoutProvider, IBillingProvisioningProvider
 {
+    public async Task<BillingReferenceResolution> ResolveSubscriptionReferences(
+        ZenmeterDemoSession session,
+        string? providerOrderRefId,
+        string? providerSubscriptionRefId,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(providerOrderRefId) &&
+            !string.IsNullOrWhiteSpace(session.ProviderCheckoutSessionId) &&
+            providerOrderRefId != session.ProviderCheckoutSessionId)
+        {
+            return BillingReferenceResolution.Failed(
+                "The billing return contains a different Stripe Checkout Session than this purchase.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.SubscriptionRefId))
+        {
+            return BillingReferenceResolution.Ready();
+        }
+
+        var checkoutSessionId = session.ProviderCheckoutSessionId ?? providerOrderRefId;
+        if (string.IsNullOrWhiteSpace(checkoutSessionId))
+        {
+            return BillingReferenceResolution.Pending();
+        }
+
+        try
+        {
+            var references = await checkoutResolver.Resolve(
+                checkoutSessionId, session.SessionId, session.CustomerAccountRefId,
+                "subscription_purchase", cancellationToken);
+            return references is null
+                ? BillingReferenceResolution.Pending()
+                : BillingReferenceResolution.Ready(references.OrderRefId, references.SubscriptionRefId, checkoutSessionId);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or Stripe.StripeException)
+        {
+            logger.LogWarning(exception, "Stripe checkout verification failed for {SessionId}.", session.SessionId);
+            return BillingReferenceResolution.Failed(
+                "Stripe could not verify this subscription checkout. Return to checkout and try again.");
+        }
+    }
+
     public BillingSystem BillingSystem => BillingSystem.Stripe;
 
     public string? ConfigurationUnavailableReason()
@@ -47,8 +91,7 @@ public sealed class StripeBillingCheckoutProvider(
         }
 
         var priceIds = await GetPriceIdsBySku(checkout.Skus, cancellationToken);
-        var redirectUrl = await CreateCheckoutSession(checkout, priceIds, cancellationToken);
-        return BillingCheckoutResult.Pending(redirectUrl);
+        return await CreateCheckoutSession(checkout, priceIds, cancellationToken);
     }
 
     private async Task<IReadOnlyList<string>> GetPriceIdsBySku(
@@ -72,7 +115,7 @@ public sealed class StripeBillingCheckoutProvider(
         return priceIds;
     }
 
-    private async Task<string> CreateCheckoutSession(
+    private async Task<BillingCheckoutResult> CreateCheckoutSession(
         ZenmeterPendingCheckout checkout,
         IReadOnlyList<string> priceIds,
         CancellationToken cancellationToken)
@@ -86,7 +129,7 @@ public sealed class StripeBillingCheckoutProvider(
                 checkout.User.Email,
                 new Dictionary<string, string>
                 {
-                    ["external_user_id"] = checkout.User.ExternalUserId
+                    [StripeMetadataKeys.ExternalUserId] = checkout.User.ExternalUserId
                 }),
             cancellationToken);
         var metadata = Metadata(checkout);
@@ -113,37 +156,38 @@ public sealed class StripeBillingCheckoutProvider(
             },
             cancellationToken: cancellationToken);
 
-        if (string.IsNullOrWhiteSpace(session.Url))
+        if (string.IsNullOrWhiteSpace(session.Url) || string.IsNullOrWhiteSpace(session.Id))
         {
-            throw new InvalidOperationException("Stripe Checkout response did not contain a redirect URL.");
+            throw new InvalidOperationException("Stripe Checkout response did not contain a session ID and redirect URL.");
         }
 
-        return session.Url;
+        return BillingCheckoutResult.Pending(session.Url, session.Id);
     }
 
     private static Dictionary<string, string> Metadata(ZenmeterPendingCheckout checkout)
     {
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["order_ref_id"] = checkout.OrderRefId,
-            ["customer_ref"] = checkout.CustomerAccountRefId,
-            ["customer_name"] = checkout.CustomerName,
-            ["external_user_id"] = checkout.User.ExternalUserId,
-            ["user_email"] = checkout.User.Email,
-            ["demo_session_id"] = checkout.SessionId,
-            ["billing_purpose"] = checkout.Purpose == BillingCheckoutPurpose.TopUp
+            [StripeMetadataKeys.CustomerRef] = checkout.CustomerAccountRefId,
+            [StripeMetadataKeys.CustomerName] = checkout.CustomerName,
+            [StripeMetadataKeys.ExternalUserId] = checkout.User.ExternalUserId,
+            [StripeMetadataKeys.UserEmail] = checkout.User.Email,
+            [StripeMetadataKeys.DemoSessionId] = checkout.SessionId,
+            [StripeMetadataKeys.BillingPurpose] = checkout.Purpose == BillingCheckoutPurpose.TopUp
                 ? "top_up"
                 : "subscription_purchase"
         };
 
-        AddMetadata(metadata, "top_up_operation_id", checkout.OperationId);
+        AddMetadata(metadata, StripeMetadataKeys.TopUpOperationId, checkout.OperationId);
         if (checkout.Purpose == BillingCheckoutPurpose.TopUp)
         {
-            AddMetadata(metadata, "top_up_sku", checkout.Skus.FirstOrDefault());
+            // One-time payment verification still uses the demo order reference for correlation.
+            metadata[StripeMetadataKeys.OrderRefId] = checkout.OrderRefId;
+            AddMetadata(metadata, StripeMetadataKeys.TopUpSku, checkout.Skus.FirstOrDefault());
         }
 
-        AddMetadata(metadata, "target_subscription_id", checkout.TargetSubscriptionId);
-        AddMetadata(metadata, "target_subscription_ref_id", checkout.TargetSubscriptionRefId);
+        AddMetadata(metadata, StripeMetadataKeys.TargetSubscriptionId, checkout.TargetSubscriptionId);
+        AddMetadata(metadata, StripeMetadataKeys.TargetSubscriptionRefId, checkout.TargetSubscriptionRefId);
         return metadata;
     }
 
@@ -158,11 +202,11 @@ public sealed class StripeBillingCheckoutProvider(
     private static string BuildSuccessUrl(string url, ZenmeterPendingCheckout checkout)
     {
         var separator = url.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        var result = $"{url}{separator}sessionId={Uri.EscapeDataString(checkout.SessionId)}";
+        var result = $"{url}{separator}sessionId={Uri.EscapeDataString(checkout.SessionId)}" +
+                     "&providerOrderRefId={CHECKOUT_SESSION_ID}";
         return checkout.Purpose == BillingCheckoutPurpose.TopUp &&
                !string.IsNullOrWhiteSpace(checkout.OperationId)
-            ? $"{result}&topUpOperationId={Uri.EscapeDataString(checkout.OperationId)}" +
-              "&providerOrderRefId={CHECKOUT_SESSION_ID}"
+            ? $"{result}&topUpOperationId={Uri.EscapeDataString(checkout.OperationId)}"
             : result;
     }
 

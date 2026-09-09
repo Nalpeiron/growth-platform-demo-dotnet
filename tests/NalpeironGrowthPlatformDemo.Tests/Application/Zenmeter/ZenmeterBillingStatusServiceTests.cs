@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
+using NalpeironGrowthPlatformDemo.Application.Zenmeter.BillingCheckoutProviders;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter;
 using NalpeironGrowthPlatformDemo.Configuration;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
@@ -11,6 +13,56 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zenmeter;
 
 public sealed class ZenmeterBillingStatusServiceTests
 {
+    [Fact]
+    public async Task GetBillingStatus_WithResolvedReferences_ResumesProvisioningAndStoresReferences()
+    {
+        // arrange
+        var session = PendingSession();
+        var store = new InMemoryZenmeterDemoSessionStore();
+        store.Save(session);
+        var checkout = new Mock<IBillingCheckoutService>();
+        checkout.SetupSequence(x => x.ResolveSubscriptionReferences(session, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BillingReferenceResolution.Ready("invoice-1", "subscription-ref-1", "checkout-1"))
+            .ReturnsAsync(BillingReferenceResolution.Ready());
+        var zenmeter = new RecordingZenmeterClient();
+        var service = CreateService(zenmeter, store, checkout.Object);
+
+        // act
+        var pending = await service.GetBillingStatus(session.SessionId, null, null, CancellationToken.None);
+        zenmeter.LookupResult = Subscription("sub-1");
+        var completed = await service.GetBillingStatus(session.SessionId, null, null, CancellationToken.None);
+
+        // assert
+        Assert.Equal(ZenmeterCheckoutStatuses.Pending, pending.Status);
+        Assert.Equal(ZenmeterCheckoutStatuses.Completed, completed.Status);
+        Assert.Equal("invoice-1", session.OrderRefId);
+        Assert.Equal("checkout-1", session.ProviderCheckoutSessionId);
+        Assert.Equal("subscription-ref-1", zenmeter.LookupSubscriptionRefId);
+        Assert.Null(zenmeter.LookupOrderRefId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetBillingStatus_WhenProviderReferencesAreNotReady_DoesNotPoll(bool failed)
+    {
+        // arrange
+        var store = StoreWithPendingSession();
+        var checkout = new Mock<IBillingCheckoutService>();
+        checkout.Setup(x => x.ResolveSubscriptionReferences(It.IsAny<ZenmeterDemoSession>(), null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(failed ? BillingReferenceResolution.Failed("Verification failed") : BillingReferenceResolution.Pending());
+        var zenmeter = new RecordingZenmeterClient();
+        var service = CreateService(zenmeter, store, checkout.Object);
+
+        // act
+        var status = await service.GetBillingStatus("zmsess-1", null, null, CancellationToken.None);
+
+        // assert
+        Assert.Equal(failed ? ZenmeterCheckoutStatuses.Failed : ZenmeterCheckoutStatuses.Pending, status.Status);
+        Assert.Equal(failed ? "Verification failed" : null, status.Error);
+        Assert.Equal(0, zenmeter.LookupCalls);
+    }
+
     [Fact]
     public async Task GetBillingStatus_WithProviderOrderRef_LooksUpByProviderOrderRef()
     {
@@ -125,11 +177,13 @@ public sealed class ZenmeterBillingStatusServiceTests
 
     private static ZenmeterBillingStatusService CreateService(
         RecordingZenmeterClient zenmeter,
-        InMemoryZenmeterDemoSessionStore store) =>
+        InMemoryZenmeterDemoSessionStore store,
+        IBillingCheckoutService? checkoutService = null) =>
         new(
             zenmeter,
             store,
             new ZenmeterSubscriptionUserProvisioner(zenmeter),
+            checkoutService ?? new BillingCheckoutService([new FastSpringBillingCheckoutProvider(Options.Create(new BillingOptions()))], Options.Create(new BillingOptions())),
             Options.Create(new BillingOptions
             {
                 ProvisioningPoll = new ProvisioningPollOptions
@@ -156,6 +210,7 @@ public sealed class ZenmeterBillingStatusServiceTests
             PlanSku = "elevate-saas-scale-monthly",
             Period = ZenmeterOfferingPeriod.Monthly,
             CustomerId = "customer-1",
+            BillingSystem = BillingSystem.FastSpring,
             OrderRefId = "_demo-z2-order",
             CheckoutStatus = ZenmeterCheckoutStatuses.Pending
         };
@@ -169,7 +224,7 @@ public sealed class ZenmeterBillingStatusServiceTests
 
     private sealed class RecordingZenmeterClient : UnsupportedZenmeterManagementClient
     {
-        public Zm.SubscriptionModel? LookupResult { get; init; }
+        public Zm.SubscriptionModel? LookupResult { get; set; }
         public string? LookupOrderRefId { get; private set; }
         public string? LookupSubscriptionRefId { get; private set; }
         public int LookupCalls { get; private set; }

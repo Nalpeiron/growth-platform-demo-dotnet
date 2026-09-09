@@ -177,6 +177,7 @@ public sealed class ZenmeterPurchaseService(
                 session.Events.Add($"Included {addon.Sku} in the checkout order.");
             }
 
+            session.ProviderCheckoutSessionId = checkoutResult.ProviderCheckoutSessionId;
             store.Save(session);
             return new ZenmeterPurchaseResult(session.SessionId, null, checkoutResult.RedirectUrl,
                 session.BillingSystem.DisplayName());

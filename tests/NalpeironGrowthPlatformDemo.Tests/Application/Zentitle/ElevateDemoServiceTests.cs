@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Moq;
 using NalpeironGrowthPlatformDemo.Application.Shared;
 using NalpeironGrowthPlatformDemo.Application.Zentitle;
 using NalpeironGrowthPlatformDemo.Application.Zentitle.BillingProviders;
@@ -14,6 +15,31 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zentitle;
 
 public sealed class ElevateDemoServiceTests
 {
+    [Fact]
+    public async Task Purchase_WithStripe_StoresCheckoutSessionForProvisioningResume()
+    {
+        // arrange
+        var stripe = new Mock<IZentitleBillingProvider>();
+        stripe.As<IZentitleProvisioningProvider>();
+        stripe.SetupGet(x => x.BillingSystem).Returns(BillingSystem.Stripe);
+        stripe.SetupGet(x => x.Capabilities).Returns(new ZentitleBillingCapabilities(
+            [BillingPeriod.Yearly], false, false, true, ZentitlePriceSource.BillingProvider));
+        stripe.Setup(x => x.CreateCheckout(It.IsAny<ZentitlePendingCheckout>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ZentitleBillingCheckoutResult.Pending("https://checkout.stripe.test/session", "cs_1"));
+        var zentitle = new StubZentitleManagementClient();
+        var service = CreateService(Plan(true), zentitle, out _, out var store, stripeProvider: stripe.Object);
+
+        // act
+        var purchase = await service.Purchase(BillingSystem.Stripe, "off-1", "Acme", "stripe-checkout", CancellationToken.None);
+
+        // assert
+        Assert.Null(purchase.Error);
+        var session = Assert.IsType<ElevateSession>(store.Get(purchase.SessionId!));
+        Assert.Equal("cs_1", session.ProviderOrderRefId);
+        Assert.Equal(ZentitleCheckoutStatuses.Pending, session.CheckoutStatus);
+        Assert.Equal(0, zentitle.CreateGroupCalls);
+    }
+
     [Fact]
     public async Task Purchase_WithEntitlementGroupWithoutAnId_RejectsThePurchase()
     {
@@ -567,7 +593,8 @@ public sealed class ElevateDemoServiceTests
         string webUrl = "",
         string zentitleStorefrontUrl = "store.test/popup-zentitle",
         Exception? pricingFailure = null,
-        Exception? customerFailure = null)
+        Exception? customerFailure = null,
+        IZentitleBillingProvider? stripeProvider = null)
     {
         customers = new StubCustomersClient(customerFailure);
         var edition = new EditionPricing("edition-1", "Standard", "", [plan], []);
@@ -579,12 +606,16 @@ public sealed class ElevateDemoServiceTests
                 ZentitleStorefrontUrl = zentitleStorefrontUrl
             }
         });
-        var billingProviders = new ZentitleBillingProviderRegistry(
-            [
-                new DefaultZentitleBillingProvider(zentitle),
-                new FastSpringZentitleBillingProvider(billingOptions, zentitle)
-            ],
-            billingOptions);
+        var providers = new List<IZentitleBillingProvider>
+        {
+            new DefaultZentitleBillingProvider(zentitle),
+            new FastSpringZentitleBillingProvider(billingOptions, zentitle)
+        };
+        if (stripeProvider is not null)
+        {
+            providers.Add(stripeProvider);
+        }
+        var billingProviders = new ZentitleBillingProviderRegistry(providers, billingOptions);
         var billingStatus = new ZentitleBillingStatusService(
             billingProviders,
             store,

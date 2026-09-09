@@ -51,10 +51,11 @@ public sealed record ZentitlePendingCheckout(
 public sealed record ZentitleBillingCheckoutResult(
     string Status,
     string? RedirectUrl = null,
-    EntitlementGroupModel? EntitlementGroup = null)
+    EntitlementGroupModel? EntitlementGroup = null,
+    string? ProviderCheckoutSessionId = null)
 {
-    public static ZentitleBillingCheckoutResult Pending(string redirectUrl) =>
-        new(ZentitleCheckoutStatuses.Pending, redirectUrl);
+    public static ZentitleBillingCheckoutResult Pending(string redirectUrl, string? providerCheckoutSessionId = null) =>
+        new(ZentitleCheckoutStatuses.Pending, redirectUrl, ProviderCheckoutSessionId: providerCheckoutSessionId);
 
     public static ZentitleBillingCheckoutResult Completed(EntitlementGroupModel entitlementGroup) =>
         new(ZentitleCheckoutStatuses.Completed, EntitlementGroup: entitlementGroup);

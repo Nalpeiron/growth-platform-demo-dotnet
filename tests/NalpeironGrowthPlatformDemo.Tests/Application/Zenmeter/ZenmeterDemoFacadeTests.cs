@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NalpeironGrowthPlatformDemo.Application.Shared.Billing;
+using NalpeironGrowthPlatformDemo.Application.Shared.Billing.Stripe;
 using NalpeironGrowthPlatformDemo.Application.Shared;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter.Billing.FastSpring;
@@ -23,6 +24,25 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zenmeter;
 
 public sealed class ZenmeterDemoFacadeTests
 {
+    [Fact]
+    public async Task Purchase_WithStripe_StoresCheckoutSessionForProvisioningResume()
+    {
+        // arrange
+        var store = new InMemoryZenmeterDemoSessionStore();
+        var service = CreateService(new StubZenmeterManagementClient(), out _, store: store);
+
+        // act
+        var purchase = await service.Purchase(
+            BillingSystem.Stripe, "elevate-saas-scale-monthly", null, "Acme",
+            ZenmeterDemoTestExtensions.UserInput, "stripe-checkout", CancellationToken.None);
+
+        // assert
+        Assert.Null(purchase.Error);
+        var session = Assert.IsType<ZenmeterDemoSession>(store.Get(purchase.SessionId!));
+        Assert.Equal("cs_1", session.ProviderCheckoutSessionId);
+        Assert.Equal(ZenmeterCheckoutStatuses.Pending, session.CheckoutStatus);
+    }
+
     [Fact]
     public async Task Purchase_WithPlanAndAddonSkus_CreatesCustomerAndSubscription()
     {
@@ -1524,7 +1544,7 @@ public sealed class ZenmeterDemoFacadeTests
     }
 
     [Fact]
-    public async Task GetBillingStatus_WithProviderRefs_LooksUpTheSubscriptionByProviderReference()
+    public async Task GetBillingStatus_WithFastSpringProviderRefs_LooksUpTheSubscriptionByProviderReference()
     {
         // arrange
         var zenmeter = new StubZenmeterManagementClient
@@ -1534,9 +1554,9 @@ public sealed class ZenmeterDemoFacadeTests
         var service = CreateService(
             zenmeter,
             out _,
-            billingOptions: new BillingOptions { DefaultBillingSystem = BillingSystem.Stripe });
+            billingOptions: new BillingOptions { DefaultBillingSystem = BillingSystem.FastSpring });
         var purchase = await service.Purchase(
-            BillingSystem.Stripe,
+            BillingSystem.FastSpring,
             "elevate-saas-scale-monthly",
             null,
             "Acme",
@@ -1569,9 +1589,9 @@ public sealed class ZenmeterDemoFacadeTests
         var service = CreateService(
             zenmeter,
             out _,
-            billingOptions: new BillingOptions { DefaultBillingSystem = BillingSystem.Stripe });
+            billingOptions: new BillingOptions { DefaultBillingSystem = BillingSystem.FastSpring });
         var purchase = await service.Purchase(
-            BillingSystem.Stripe,
+            BillingSystem.FastSpring,
             "elevate-saas-scale-monthly",
             null,
             "Acme",
@@ -1785,6 +1805,7 @@ public sealed class ZenmeterDemoFacadeTests
             zenmeter,
             store,
             provisioner,
+            checkoutService,
             Options.Create(billingOptions ?? new BillingOptions()),
             NullLogger<ZenmeterBillingStatusService>.Instance);
         var purchase = new ZenmeterPurchaseService(
@@ -2478,15 +2499,23 @@ public sealed class ZenmeterDemoFacadeTests
         }
     }
 
-    private sealed class StubExternalBillingCheckoutProvider(BillingSystem billingSystem) : IBillingCheckoutProvider
+    private sealed class StubExternalBillingCheckoutProvider(BillingSystem billingSystem) : IBillingCheckoutProvider, IBillingProvisioningProvider
     {
+        public Task<BillingReferenceResolution> ResolveSubscriptionReferences(
+            ZenmeterDemoSession session,
+            string? providerOrderRefId,
+            string? providerSubscriptionRefId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(BillingReferenceResolution.Ready(providerOrderRefId, providerSubscriptionRefId));
+
         public BillingSystem BillingSystem => billingSystem;
 
         public Task<BillingCheckoutResult> CreateCheckout(
             ZenmeterPendingCheckout checkout,
             CancellationToken cancellationToken) =>
             Task.FromResult(BillingCheckoutResult.Pending(
-                $"https://checkout.{billingSystem.ToSlug()}.test/session"));
+                $"https://checkout.{billingSystem.ToSlug()}.test/session",
+                billingSystem == BillingSystem.Stripe ? "cs_1" : null));
     }
 
     private sealed class StubFastSpringBillingPaymentVerifier(

@@ -91,6 +91,13 @@
                 return;
             }
 
+            if (status.Status == ZenmeterCheckoutStatuses.Failed)
+            {
+                _error = status.Error;
+                StateHasChanged();
+                return;
+            }
+
             if (DateTimeOffset.UtcNow - startedAt > TimeSpan.FromSeconds(status.TimeoutSeconds))
             {
                 _error = status.Error ?? "Payment is complete, but provisioning has not finished yet. This page can be refreshed to retry.";

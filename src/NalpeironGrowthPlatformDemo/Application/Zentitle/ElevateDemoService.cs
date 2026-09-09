@@ -169,6 +169,7 @@ public sealed class ElevateDemoService(
                 offeringId,
                 plan.Sku);
             var checkoutResult = await provider.CreateCheckout(checkout, cancellationToken);
+            session.ProviderOrderRefId = checkoutResult.ProviderCheckoutSessionId;
 
             if (checkoutResult.Status == ZentitleCheckoutStatuses.Completed)
             {

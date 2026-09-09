@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using NalpeironGrowthPlatformDemo.Application.Zenmeter.BillingCheckoutProviders;
 using NalpeironGrowthPlatformDemo.Configuration;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
 
@@ -8,6 +9,7 @@ public sealed class ZenmeterBillingStatusService(
     IZenmeterManagementClient zenmeter,
     IZenmeterDemoSessionStore store,
     ZenmeterSubscriptionUserProvisioner userProvisioner,
+    IBillingCheckoutService billingCheckoutService,
     IOptions<BillingOptions> billingOptions,
     ILogger<ZenmeterBillingStatusService> logger)
 {
@@ -19,8 +21,6 @@ public sealed class ZenmeterBillingStatusService(
     {
         var status = await store.Update(sessionId, async session =>
         {
-            ApplyProviderReferences(session, providerOrderRefId, providerSubscriptionRefId);
-
             if (session.CheckoutStatus == ZenmeterCheckoutStatuses.Completed &&
                 !string.IsNullOrWhiteSpace(session.SubscriptionId))
             {
@@ -32,6 +32,20 @@ public sealed class ZenmeterBillingStatusService(
                 return Cancelled(session);
             }
 
+            var references = await billingCheckoutService.ResolveSubscriptionReferences(
+                session, providerOrderRefId, providerSubscriptionRefId, cancellationToken);
+            if (references.Status == BillingReferenceResolutionStatus.Failed)
+            {
+                return WithPollOptions(ZenmeterCheckoutStatuses.Failed, session, references.Error);
+            }
+
+            if (references.Status == BillingReferenceResolutionStatus.Pending)
+            {
+                return Pending(session, null);
+            }
+
+            session.ProviderCheckoutSessionId = references.CheckoutSessionId ?? session.ProviderCheckoutSessionId;
+            ApplyProviderReferences(session, references.OrderRefId, references.SubscriptionRefId);
             var lookupRefs = SubscriptionLookupRefs.From(session);
             logger.LogInformation(
                 "Polling Zenmeter subscription lookup for demo session {SessionId}. OrderRefId: {OrderRefId}; SubscriptionRefId: {SubscriptionRefId}.",
@@ -90,7 +104,7 @@ public sealed class ZenmeterBillingStatusService(
         if (!string.IsNullOrWhiteSpace(providerOrderRefId) &&
             !string.Equals(session.OrderRefId, providerOrderRefId, StringComparison.Ordinal))
         {
-            // FastSpring provisioning uses its own order id as the Zenmeter order reference.
+            // Billing provisioning uses the provider's order id as the Zenmeter order reference.
             // Replace the pre-checkout demo reference so polling matches the subscription
             // record created by the billing integration webhook.
             session.OrderRefId = providerOrderRefId;

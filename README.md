@@ -274,12 +274,9 @@ For every paid yearly Zentitle offering, create an active recurring USD Stripe P
 `lookup_key` exactly equals the Zentitle offering SKU. The demo resolves that Price for both the
 pricing screen and Checkout; new catalogue entries do not need legacy `offering_sku` metadata.
 
-The demo creates or reuses a Stripe Customer with its real `name` field and
-`metadata.customer_ref` set to the existing Nalpeiron customer account reference. Checkout runs in
-`subscription` mode and copies the generated demo `order_ref_id` into Subscription metadata. Orion
-processes the initial paid subscription invoice, resolves the Price lookup key back to the Zentitle
-offering, and provisions the entitlement group. The return page then polls Zentitle by the existing
-customer and that application order reference until provisioning completes.
+The demo creates or reuses a Stripe Customer linked to the Nalpeiron customer and opens
+subscription checkout. After payment, Orion processes the invoice and provisions the Zentitle
+entitlement group. The return page waits for provisioning to complete before opening the workspace.
 
 Required setup:
 
@@ -554,13 +551,9 @@ Development-only endpoints:
 
 ## Demo Data Cleanup
 
-Objects created by the demo carry the `_demo-z2-` reference id prefix where the API supports it:
-
-- customer `accountRefId` = `_demo-z2-<guid>` (max 32 chars)
-- Zentitle entitlement group `orderRefId` = `_demo-z2-<timestamp>-<customer-slug>` (max 50 chars)
-- Zenmeter subscription order ref uses the same order reference helper
-
-Use the Nalpeiron admin UI/API to manually review and delete live demo data.
+Demo customers have an `accountRefId` beginning with `_demo-z2-`. Use this prefix in the Nalpeiron
+admin UI/API to find demo customers, then review and delete their related subscriptions, entitlement
+groups and add-ons. Purchases made through Stripe or FastSpring use the provider's order references.
 
 ## Build / Test
 
