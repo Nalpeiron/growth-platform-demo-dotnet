@@ -61,7 +61,7 @@ public sealed class PricingCatalogTests
     }
 
     [Fact]
-    public async Task GetPricing_WithFastSpring_RequestsOnlySupportedPeriodSkusFromThePriceBook()
+    public async Task GetPricing_WithFastSpring_RequestsYearlyAndPerpetualPrices()
     {
         // arrange
         var client = new StubZentitleManagementClient
@@ -77,15 +77,13 @@ public sealed class PricingCatalogTests
             .Setup(candidate => candidate.GetPrices(
                 BillingSystem.FastSpring,
                 It.Is<IReadOnlyCollection<string>>(skus =>
-                    skus.Count == 1 &&
+                    skus.Count == 2 &&
                     skus.Contains("sku-yearly") &&
-                    !skus.Contains("sku-perpetual")),
+                    skus.Contains("sku-perpetual")),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<string, BillingPrice>(StringComparer.OrdinalIgnoreCase)
             {
                 ["sku-yearly"] = new("sku-yearly", 599),
-                // A provider-wide price book can contain an unsupported perpetual product.
-                // Zentitle capabilities must still keep it unavailable for external checkout.
                 ["sku-perpetual"] = new("sku-perpetual", 999)
             });
         var catalog = new PricingCatalog(
@@ -103,12 +101,12 @@ public sealed class PricingCatalogTests
         Assert.True(yearly.IsPriceConfigured);
         Assert.Equal(599, yearly.Price);
         var perpetual = Assert.Single(plans, plan => plan.Sku == "sku-perpetual");
-        Assert.False(perpetual.IsPriceConfigured);
-        Assert.Equal(0, perpetual.Price);
+        Assert.True(perpetual.IsPriceConfigured);
+        Assert.Equal(999, perpetual.Price);
     }
 
     [Fact]
-    public async Task GetPricing_WithStripe_UsesOnlyAnnualRecurringPrices()
+    public async Task GetPricing_WithStripe_UsesAnnualAndOneTimePrices()
     {
         // arrange
         var client = new StubZentitleManagementClient
@@ -124,9 +122,9 @@ public sealed class PricingCatalogTests
             .Setup(candidate => candidate.GetPrices(
                 BillingSystem.Stripe,
                 It.Is<IReadOnlyCollection<string>>(skus =>
-                    skus.Count == 1 &&
+                    skus.Count == 2 &&
                     skus.Contains("sku-yearly") &&
-                    !skus.Contains("sku-perpetual")),
+                    skus.Contains("sku-perpetual")),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<string, BillingPrice>(StringComparer.OrdinalIgnoreCase)
             {
@@ -134,15 +132,16 @@ public sealed class PricingCatalogTests
                     "sku-yearly",
                     599,
                     "price-yearly",
-                    new BillingPriceRecurrence(BillingPriceInterval.Year, 1))
+                    new BillingPriceRecurrence(BillingPriceInterval.Year, 1)),
+                ["sku-perpetual"] = new("sku-perpetual", 999, "price-perpetual")
             });
         var capabilities = new ZentitleBillingCapabilities(
-            [BillingPeriod.Yearly],
+            [BillingPeriod.Yearly, BillingPeriod.Perpetual],
             SupportsTrialCheckout: false,
             SupportsUpgrade: false,
             UsesExternalCheckout: true,
             PriceSource: ZentitlePriceSource.BillingProvider,
-            RequiredPriceRecurrence: new(BillingPriceInterval.Year, 1));
+            RequiresMatchingPriceRecurrence: true);
         var catalog = new PricingCatalog(
             client,
             Options.Create(new ZentitleOptions { ProductId = "product-1" }),
@@ -155,17 +154,23 @@ public sealed class PricingCatalogTests
         // assert
         var plans = Assert.Single(pricing).Plans;
         Assert.True(Assert.Single(plans, plan => plan.Sku == "sku-yearly").IsPriceConfigured);
-        Assert.False(Assert.Single(plans, plan => plan.Sku == "sku-perpetual").IsPriceConfigured);
+        Assert.True(Assert.Single(plans, plan => plan.Sku == "sku-perpetual").IsPriceConfigured);
         prices.VerifyAll();
     }
 
-    [Fact]
-    public async Task GetPricing_WithStripeMonthlyPriceForYearlyOffering_MarksThePlanUnavailable()
+    [Theory]
+    [InlineData(Zt.LicenseType.Subscription, null, 1)]
+    [InlineData(Zt.LicenseType.Subscription, BillingPriceInterval.Month, 1)]
+    [InlineData(Zt.LicenseType.Subscription, BillingPriceInterval.Year, 2)]
+    [InlineData(Zt.LicenseType.Perpetual, BillingPriceInterval.Year, 1)]
+    [InlineData(Zt.LicenseType.Perpetual, BillingPriceInterval.Month, 1)]
+    public async Task GetPricing_WithStripePriceMismatchingOfferingPeriod_MarksThePlanUnavailable(
+        Zt.LicenseType licenseType, BillingPriceInterval? interval, long intervalCount)
     {
         // arrange
         var client = new StubZentitleManagementClient
         {
-            Offerings = [Offering("off-yearly", "sku-yearly", Zt.LicenseType.Subscription)]
+            Offerings = [Offering("off-yearly", "sku-yearly", licenseType)]
         };
         var prices = new Mock<IBillingPriceCatalog>(MockBehavior.Strict);
         prices
@@ -179,15 +184,15 @@ public sealed class PricingCatalogTests
                     "sku-yearly",
                     49,
                     "price-monthly",
-                    new BillingPriceRecurrence(BillingPriceInterval.Month, 1))
+                    interval is null ? null : new BillingPriceRecurrence(interval.Value, intervalCount))
             });
         var capabilities = new ZentitleBillingCapabilities(
-            [BillingPeriod.Yearly],
+            [BillingPeriod.Yearly, BillingPeriod.Perpetual],
             SupportsTrialCheckout: false,
             SupportsUpgrade: false,
             UsesExternalCheckout: true,
             PriceSource: ZentitlePriceSource.BillingProvider,
-            RequiredPriceRecurrence: new(BillingPriceInterval.Year, 1));
+            RequiresMatchingPriceRecurrence: true);
         var catalog = new PricingCatalog(
             client,
             Options.Create(new ZentitleOptions { ProductId = "product-1" }),
@@ -311,7 +316,7 @@ public sealed class PricingCatalogTests
                     UsesExternalCheckout: false,
                     PriceSource: ZentitlePriceSource.Configured)
                 : externalCapabilities ?? new(
-                    [BillingPeriod.Yearly],
+                    [BillingPeriod.Yearly, BillingPeriod.Perpetual],
                     SupportsTrialCheckout: false,
                     SupportsUpgrade: false,
                     UsesExternalCheckout: true,

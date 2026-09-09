@@ -48,7 +48,8 @@ a Stripe account, FastSpring account, external checkout or billing webhook.
    ```
 
    Again, use `cp` on macOS or Linux. Fill in the `Nalpeiron` connection values,
-   `Zentitle:ProductId` and `Zenmeter:BusinessModelId`.
+   `Zentitle:ProductId` and `Zenmeter:BusinessModelId` using
+   [Where To Find The Required IDs And Connection Values](#where-to-find-the-required-ids-and-connection-values).
 
 3. Keep only the direct provider enabled. This is already the default in the example file:
 
@@ -76,6 +77,33 @@ a Stripe account, FastSpring account, external checkout or billing webhook.
 mode. These flows still call the live Nalpeiron Management API and create data in the configured
 tenant. Stripe and FastSpring buttons remain visible in the product picker, but their routes report
 that the provider is disabled until it is added to `EnabledBillingSystems`.
+
+### Where To Find The Required IDs And Connection Values
+
+Sign in to the Nalpeiron administration portal for the tenant you want to use. Copy the values
+below into `src/NalpeironGrowthPlatformDemo/appsettings.Local.json`; use IDs and API credentials
+from that same tenant.
+
+After adding a Management API client, click **Download Postman environment configuration** before
+closing the creation screen. The downloaded `<clientId>.postman_environment.json` file contains
+the connection values needed for the demo: `clientId`, `clientSecret`, `tenantId`, `orionApiUrl`
+(Management API URL), and `oauth_url` (OAuth token URL). Copy them into the corresponding
+`Nalpeiron` settings in `appsettings.Local.json`. Product ID, Business Model ID, and API version
+are obtained separately as described below.
+
+| Setting | Where to find it |
+| --- | --- |
+| `Zentitle:ProductId` | Open **Zentitle2 -> Products**, select the demo product, and copy **ID** from its **Details** card. |
+| `Zenmeter:BusinessModelId` | Open **Zenmeter -> Products**, select the demo product, open the **Models** tab, and select the business model. Use **Copy business model ID** in the model page header. This setting needs the model's ID, not the Zenmeter product's ID. |
+| `Nalpeiron:TenantId` | Open **Administration -> API Credentials -> Management API** and copy **Tenant ID** from **Management API Details**. |
+| `Nalpeiron:ApiUrl` and `Nalpeiron:OAuthUrl` | Copy **API URL** and **OAuth URL** from the same **Management API Details** card. |
+| `Nalpeiron:ApiVersion` | The same card shows **Default API Version**. The demo already sets an API version in `appsettings.json`; override it in your local settings if your tenant requires a different version. |
+| `Nalpeiron:ClientId` and `Nalpeiron:ClientSecret` | Use the tenant's **Management API** client credentials. Obtain an existing client's credentials from your administrator, or use **Add API Client** under **Management API Clients** and copy **Client ID** and **Client secret** from the creation screen. Save the secret before closing that screen. |
+| `Nalpeiron:WebUrl` (optional) | Use the base URL of the tenant administration portal you signed in to, without a product or model page path. The demo uses it for admin links. |
+
+Select the product and business model containing the demo catalog you want to showcase. If the
+catalog has not been set up in your tenant yet, ask your tenant administrator to configure it
+before starting the demo.
 
 ## Architecture
 
@@ -144,9 +172,10 @@ Magic API/config strings are parsed at boundaries. Zentitle flow uses `FeatureKi
   Stripe resolve external prices by matching each offering SKU to the provider product path or
   active Stripe Price `lookup_key`.
 - **Purchase**: creates a shared customer. The default route creates an entitlement group directly;
-  FastSpring opens popup checkout and waits for Orion's `subscription.activated` webhook flow to
-  provision the entitlement group. Stripe opens hosted Checkout and waits for Orion's initial
-  `invoice.paid` subscription flow.
+  FastSpring opens popup checkout; Orion provisions yearly subscriptions from `subscription.activated`
+  and perpetual purchases from `order.completed`. Stripe opens hosted Checkout; Orion provisions
+  yearly subscriptions from the initial `invoice.paid` event and perpetual purchases from
+  `checkout.session.completed` or `checkout.session.async_payment_succeeded` after payment.
 - **Workspace**: loads the live entitlement with product, attributes, features and offering.
 - **Use a feature**: lazily creates an activation, then checks out or returns feature quantity.
 - **Upgrade**: direct/default sessions use `UpgradePolicy` and change-offering. Upgrade is disabled
@@ -231,8 +260,9 @@ Optional keys commonly overridden per environment:
 - `Zentitle:EditionOrder`
 - `Zentitle:Prices:<sku>:Price`
 - `Zenmeter:Prices:<sku>:Price` - used by the `None` billing route
-- `Billing:DefaultBillingSystem` - provider used by the debug `/api/demo/zenmeter/pricing` endpoint
-  when no billing system is specified
+- `Billing:DefaultBillingSystem` - provider for the `/elevate/saas` landing redirect, unknown-provider
+  fallbacks in Zenmeter pricing and checkout, price resolution without an explicit provider, and
+  the debug `/api/demo/zenmeter/pricing` endpoint
 - `Billing:EnabledBillingSystems` - providers allowed to resolve prices and start checkout
 - `Billing:Stripe:ZenmeterSuccessUrl` / `ZenmeterCancelUrl`
 - `Billing:Stripe:ZentitleSuccessUrl` / `ZentitleCancelUrl`
@@ -266,25 +296,30 @@ and add-on compatibility come from the live API.
 
 ### Stripe Setup For Zentitle Checkout
 
-The Zentitle Stripe route is `/elevate/stripe`. It supports recurring yearly offerings only.
-Perpetual licenses and free trials continue through `/elevate/default`, and upgrades remain disabled
-for Stripe-managed entitlements.
+The Zentitle Stripe route is `/elevate/stripe`. It supports yearly and perpetual offerings.
+Free trials continue through `/elevate/default`, and upgrades remain disabled for Stripe-managed
+entitlements.
 
-For every paid yearly Zentitle offering, create an active recurring USD Stripe Price whose
-`lookup_key` exactly equals the Zentitle offering SKU. The demo resolves that Price for both the
-pricing screen and Checkout; new catalogue entries do not need legacy `offering_sku` metadata.
+For every paid Zentitle offering, create an active USD Stripe Price whose `lookup_key` exactly
+equals the Zentitle offering SKU: recurring every year for yearly offerings, or one-time for
+perpetual offerings. The demo resolves and validates that Price for both the pricing screen and
+Checkout; new catalogue entries do not need legacy `offering_sku` metadata.
 
-The demo creates or reuses a Stripe Customer linked to the Nalpeiron customer and opens
-subscription checkout. After payment, Orion processes the invoice and provisions the Zentitle
-entitlement group. The return page waits for provisioning to complete before opening the workspace.
+The demo creates or reuses a Stripe Customer linked to the Nalpeiron customer. Yearly purchases
+use subscription checkout and resolve the paid invoice reference; perpetual purchases use payment
+checkout without invoice creation and resolve the paid PaymentIntent reference. The return page
+verifies the Checkout Session and waits for Orion to provision the Zentitle entitlement group
+before opening the workspace.
 
 Required setup:
 
-1. Add active yearly Stripe Prices with lookup keys equal to the Zentitle offering SKUs.
+1. Add active yearly recurring and one-time Stripe Prices with lookup keys equal to the respective
+   Zentitle offering SKUs.
 2. Configure the Stripe secret API key and webhook signing secret in
    `Administration -> Integrations -> Stripe` in Orion.
-3. Forward Stripe events to Orion's `/stripe/webhook`; initial provisioning uses `invoice.paid`
-   with `billing_reason=subscription_create`.
+3. Forward Stripe events to Orion's `/stripe/webhook`: yearly provisioning uses `invoice.paid`
+   with `billing_reason=subscription_create`; perpetual provisioning uses `checkout.session.completed`
+   or `checkout.session.async_payment_succeeded` for paid payment-mode sessions.
 4. Configure `Billing:Stripe:SecretKey`, `ZentitleSuccessUrl`, and `ZentitleCancelUrl` in the demo.
 5. Keep the Stripe listener running while testing so Orion can provision asynchronously.
 
@@ -332,9 +367,12 @@ Copy `src/NalpeironGrowthPlatformDemo/appsettings.Local.example.json` to
 ```
 
 The enabled list controls whether an integration can resolve prices and start checkout. Both
-Zentitle and Zenmeter accept `default`, `stripe` and `fastspring`. `DefaultBillingSystem` only picks
-the provider used by the debug `/api/demo/zenmeter/pricing` endpoint. For example, this enables
-Stripe while leaving FastSpring disabled:
+Zentitle and Zenmeter accept `default`, `stripe` and `fastspring`. `DefaultBillingSystem` selects
+the `/elevate/saas` landing destination and the fallback for an unknown provider in Zenmeter pricing
+and checkout. It also selects the provider for price resolution without an explicit provider and
+the debug `/api/demo/zenmeter/pricing` endpoint. Explicit valid provider routes and the product
+picker's configured links keep their selected provider. For example, this enables Stripe while
+leaving FastSpring disabled:
 
 ```json
 {
@@ -389,21 +427,20 @@ for example `elevatetest.test.onfastspring.com/popup-zentitle`.
 
 FastSpring and Orion requirements:
 
-- Create FastSpring subscription products whose product paths exactly match the Zentitle offering
-  SKUs. Orion resolves each path against the Zentitle offering catalogue.
+- Create FastSpring subscription products for yearly offerings and one-time products for perpetual
+  offerings, with product paths exactly matching the respective Zentitle offering SKUs. Orion
+  resolves each path against the Zentitle offering catalogue.
 - Add those products to the dedicated Zentitle popup and add the demo origin to FastSpring's
   allowed website domains.
 - FastSpring's price API is account-wide and cannot confirm popup product membership. The demo can
   display a product that exists in the account but is missing from this storefront, so the popup's
   product list must be kept aligned with the Zentitle offering SKUs.
-- Configure the FastSpring integration webhook in Orion. Zentitle provisioning is triggered by
-  `subscription.activated`; FastSpring's `order.completed` event does not provision an entitlement.
-- Keep yearly paid offerings as recurring FastSpring subscriptions. Perpetual purchases remain on
-  `/elevate/default` because they are one-time orders, and free trials use the default checkout
-  because no external payment is required.
+- Configure the FastSpring integration webhook in Orion. Yearly Zentitle provisioning is triggered
+  by `subscription.activated`; perpetual provisioning is triggered by `order.completed`.
+- Free trials use the default checkout because no external payment is required.
 - The demo creates the customer before checkout and passes its `accountRefId` as `customer_ref`.
   Orion uses that reference to reuse the customer when it provisions the entitlement group.
-- After checkout, the demo polls Zentitle by customer and the actual FastSpring original-order ID
+- After checkout, the demo polls Zentitle by customer and the actual FastSpring order ID
   until the entitlement group appears. Closing checkout before FastSpring returns an order ID does
   not complete the demo session.
 
@@ -458,7 +495,7 @@ node scripts/zenmeter/update-fastspring-product-prices.js `
   --dry-run
 ```
 
-Update only the recurring Zentitle product paths from `Zentitle.Prices` with:
+Update yearly and perpetual Zentitle product paths from `Zentitle.Prices` with:
 
 ```powershell
 node scripts/zentitle/update-fastspring-product-prices.js `
@@ -469,8 +506,10 @@ node scripts/zentitle/update-fastspring-product-prices.js `
 ```
 
 The Zentitle entrypoint requires every configured SKU to end in `-yearly` or `-perpetual`. It
-updates only `-yearly` products and deliberately excludes perpetual products from FastSpring.
-An ambiguous SKU fails preflight instead of being updated or silently skipped.
+updates both yearly and perpetual products, including catalogs containing only perpetual SKUs.
+An ambiguous SKU fails preflight instead of being updated or silently skipped. Products must
+already exist in FastSpring with the correct recurring or one-time setup; the script updates prices
+without changing the product's billing period.
 
 Remove `--dry-run` to apply prices. Before making any changes, each entrypoint verifies that every
 selected SKU exists in FastSpring. The shared updater preserves the current pricing configuration

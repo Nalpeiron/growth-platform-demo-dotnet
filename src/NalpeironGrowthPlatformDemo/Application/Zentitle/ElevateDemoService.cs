@@ -167,7 +167,8 @@ public sealed class ElevateDemoService(
                 customer.AccountRefId,
                 orderRefId,
                 offeringId,
-                plan.Sku);
+                plan.Sku,
+                plan.Period);
             var checkoutResult = await provider.CreateCheckout(checkout, cancellationToken);
             session.ProviderOrderRefId = checkoutResult.ProviderCheckoutSessionId;
 

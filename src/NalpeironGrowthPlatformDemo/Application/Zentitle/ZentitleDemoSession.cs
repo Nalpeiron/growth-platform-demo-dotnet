@@ -18,6 +18,7 @@ public sealed class ElevateSession
     public string? OrderRefId { get; set; }
     public string? ProviderOrderRefId { get; set; }
     public string? ProviderSubscriptionRefId { get; set; }
+    public bool IsProviderCheckoutVerified { get; set; }
     public string CheckoutStatus { get; set; } = ZentitleCheckoutStatuses.Completed;
     public string? EntitlementGroupId { get; set; }
     public string? EntitlementId { get; set; }

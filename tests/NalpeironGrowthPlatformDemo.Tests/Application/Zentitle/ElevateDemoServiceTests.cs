@@ -15,19 +15,21 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zentitle;
 
 public sealed class ElevateDemoServiceTests
 {
-    [Fact]
-    public async Task Purchase_WithStripe_StoresCheckoutSessionForProvisioningResume()
+    [Theory]
+    [InlineData(BillingPeriod.Yearly)]
+    [InlineData(BillingPeriod.Perpetual)]
+    public async Task Purchase_WithStripe_StoresCheckoutSessionForProvisioningResume(BillingPeriod period)
     {
         // arrange
         var stripe = new Mock<IZentitleBillingProvider>();
         stripe.As<IZentitleProvisioningProvider>();
         stripe.SetupGet(x => x.BillingSystem).Returns(BillingSystem.Stripe);
         stripe.SetupGet(x => x.Capabilities).Returns(new ZentitleBillingCapabilities(
-            [BillingPeriod.Yearly], false, false, true, ZentitlePriceSource.BillingProvider));
-        stripe.Setup(x => x.CreateCheckout(It.IsAny<ZentitlePendingCheckout>(), It.IsAny<CancellationToken>()))
+            [BillingPeriod.Yearly, BillingPeriod.Perpetual], false, false, true, ZentitlePriceSource.BillingProvider));
+        stripe.Setup(x => x.CreateCheckout(It.Is<ZentitlePendingCheckout>(checkout => checkout.Period == period), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ZentitleBillingCheckoutResult.Pending("https://checkout.stripe.test/session", "cs_1"));
         var zentitle = new StubZentitleManagementClient();
-        var service = CreateService(Plan(true), zentitle, out _, out var store, stripeProvider: stripe.Object);
+        var service = CreateService(Plan(true, period: period), zentitle, out _, out var store, stripeProvider: stripe.Object);
 
         // act
         var purchase = await service.Purchase(BillingSystem.Stripe, "off-1", "Acme", "stripe-checkout", CancellationToken.None);
@@ -36,6 +38,7 @@ public sealed class ElevateDemoServiceTests
         Assert.Null(purchase.Error);
         var session = Assert.IsType<ElevateSession>(store.Get(purchase.SessionId!));
         Assert.Equal("cs_1", session.ProviderOrderRefId);
+        Assert.Equal(period, session.Period);
         Assert.Equal(ZentitleCheckoutStatuses.Pending, session.CheckoutStatus);
         Assert.Equal(0, zentitle.CreateGroupCalls);
     }
@@ -493,7 +496,7 @@ public sealed class ElevateDemoServiceTests
     }
 
     [Fact]
-    public async Task Purchase_WithFastSpringPerpetualOffering_RejectsItBeforeCreatingACustomer()
+    public async Task Purchase_WithFastSpringPerpetualOffering_StartsCheckout()
     {
         // arrange
         var service = CreateService(
@@ -510,9 +513,10 @@ public sealed class ElevateDemoServiceTests
             CancellationToken.None);
 
         // assert
-        Assert.Null(purchase.SessionId);
-        Assert.Contains("does not support perpetual Zentitle licenses", purchase.Error);
-        Assert.Equal(0, customers.CreateCalls);
+        Assert.NotNull(purchase.SessionId);
+        Assert.Null(purchase.Error);
+        Assert.Contains("sessionId=", purchase.RedirectUrl);
+        Assert.Equal(1, customers.CreateCalls);
     }
 
     [Fact]

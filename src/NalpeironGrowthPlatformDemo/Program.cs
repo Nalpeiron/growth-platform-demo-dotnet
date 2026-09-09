@@ -135,7 +135,7 @@ builder.Services
     });
 builder.Services.AddScoped<IBillingPriceProvider, StaticBillingPriceProvider>();
 builder.Services.AddScoped<StripeBillingClientFactory>();
-builder.Services.AddScoped<IStripeSubscriptionCheckoutResolver, StripeSubscriptionCheckoutResolver>();
+builder.Services.AddScoped<IStripeCheckoutResolver, StripeCheckoutResolver>();
 builder.Services.AddScoped<StripeBillingCustomerService>();
 builder.Services.AddScoped<StripeBillingPriceProvider>();
 builder.Services.AddScoped<IBillingPriceProvider>(serviceProvider =>

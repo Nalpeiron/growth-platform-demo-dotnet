@@ -122,5 +122,5 @@ public sealed class DefaultZentitleBillingProviderTests
             "account-ref-1",
             "demo-order-1",
             "offering-1",
-            "sku-1");
+            "sku-1", BillingPeriod.Yearly);
 }

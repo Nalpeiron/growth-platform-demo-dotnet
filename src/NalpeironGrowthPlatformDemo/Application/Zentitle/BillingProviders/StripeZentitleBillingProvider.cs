@@ -13,18 +13,18 @@ public sealed class StripeZentitleBillingProvider(
     IBillingPriceResolver priceResolver,
     StripeBillingClientFactory clientFactory,
     StripeBillingCustomerService customerService,
-    IStripeSubscriptionCheckoutResolver checkoutResolver,
+    IStripeCheckoutResolver checkoutResolver,
     IZentitleManagementClient zentitle) : IZentitleBillingProvider, IZentitleProvisioningProvider
 {
     public BillingSystem BillingSystem => BillingSystem.Stripe;
 
     public ZentitleBillingCapabilities Capabilities { get; } = new(
-        [BillingPeriod.Yearly],
+        [BillingPeriod.Yearly, BillingPeriod.Perpetual],
         SupportsTrialCheckout: false,
         SupportsUpgrade: false,
         UsesExternalCheckout: true,
         PriceSource: ZentitlePriceSource.BillingProvider,
-        RequiredPriceRecurrence: new(BillingPriceInterval.Year, 1));
+        RequiresMatchingPriceRecurrence: true);
 
     public string? ConfigurationUnavailableReason()
     {
@@ -71,13 +71,14 @@ public sealed class StripeZentitleBillingProvider(
             string.IsNullOrWhiteSpace(price.ProviderPriceId))
         {
             throw new InvalidOperationException(
-                $"Stripe active price was not found for SKU '{checkout.Sku}'. Ensure Stripe has an active recurring Price with lookup_key '{checkout.Sku}'.");
+                $"Stripe active price was not found for SKU '{checkout.Sku}'. Ensure Stripe has an active Price with lookup_key '{checkout.Sku}'.");
         }
 
-        if (!Capabilities.SupportsPrice(price))
+        var isPerpetual = checkout.Period == BillingPeriod.Perpetual;
+        if (!Capabilities.SupportsPrice(checkout.Period, price))
         {
             throw new InvalidOperationException(
-                $"Stripe Price for Zentitle SKU '{checkout.Sku}' must be a yearly recurring Price.");
+                $"Stripe Price for Zentitle SKU '{checkout.Sku}' must be a {(isPerpetual ? "one-time" : "yearly recurring")} Price.");
         }
 
         var stripeCustomerId = await customerService.EnsureCustomer(
@@ -91,7 +92,7 @@ public sealed class StripeZentitleBillingProvider(
         var session = await new SessionService(clientFactory.Create()).CreateAsync(
             new SessionCreateOptions
             {
-                Mode = "subscription",
+                Mode = isPerpetual ? "payment" : "subscription",
                 SuccessUrl = BuildSuccessUrl(stripe.ZentitleSuccessUrl, checkout.SessionId),
                 CancelUrl = BuildCancelUrl(stripe.ZentitleCancelUrl, checkout.OfferingId),
                 ClientReferenceId = checkout.SessionId,
@@ -105,7 +106,8 @@ public sealed class StripeZentitleBillingProvider(
                     }
                 ],
                 Metadata = metadata,
-                SubscriptionData = new SessionSubscriptionDataOptions { Metadata = metadata }
+                SubscriptionData = isPerpetual ? null : new SessionSubscriptionDataOptions { Metadata = metadata },
+                PaymentIntentData = isPerpetual ? new SessionPaymentIntentDataOptions { Metadata = metadata } : null
             },
             cancellationToken: cancellationToken);
 
@@ -147,11 +149,12 @@ public sealed class StripeZentitleBillingProvider(
             return null;
         }
 
-        if (string.IsNullOrWhiteSpace(session.ProviderSubscriptionRefId))
+        if (!session.IsProviderCheckoutVerified)
         {
             var references = await checkoutResolver.Resolve(
                 session.ProviderOrderRefId, session.SessionId, session.CustomerAccountRefId,
-                "zentitle_purchase", cancellationToken);
+                "zentitle_purchase", cancellationToken,
+                session.Period == BillingPeriod.Perpetual ? StripeCheckoutMode.Payment : StripeCheckoutMode.Subscription);
             if (references is null)
             {
                 return null;
@@ -159,6 +162,7 @@ public sealed class StripeZentitleBillingProvider(
 
             session.OrderRefId = references.OrderRefId;
             session.ProviderSubscriptionRefId = references.SubscriptionRefId;
+            session.IsProviderCheckoutVerified = true;
         }
 
         return await zentitle.LookupGroup(session.CustomerId, session.OrderRefId!, cancellationToken);
