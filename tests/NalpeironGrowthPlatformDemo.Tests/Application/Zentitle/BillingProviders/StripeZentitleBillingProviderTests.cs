@@ -17,6 +17,25 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zentitle.BillingProvider
 
 public sealed class StripeZentitleBillingProviderTests
 {
+    [Theory]
+    [InlineData(BillingPeriod.Yearly)]
+    [InlineData(BillingPeriod.Perpetual)]
+    public async Task CreateCheckout_WithMissingSelectedPrice_ThrowsBeforeCreatingACustomer(BillingPeriod period)
+    {
+        // arrange
+        var handler = new RecordingStripeHandler([
+            new(HttpMethod.Get, "/v1/prices", """{"data":[]}""")
+        ]);
+        var provider = Provider(handler);
+
+        // act
+        var act = () => provider.CreateCheckout(PendingCheckout() with { Period = period }, CancellationToken.None);
+
+        // assert
+        await Assert.ThrowsAsync<BillingPriceException>(act);
+        Assert.Equal("/v1/prices", Assert.Single(handler.Requests).Path);
+    }
+
     [Fact]
     public void Capabilities_WhenRead_SupportYearlyAndPerpetualExternalCheckout()
     {
@@ -152,8 +171,8 @@ public sealed class StripeZentitleBillingProviderTests
         // assert
         Assert.Null(first.Error);
         Assert.Null(repeated.Error);
-        Assert.Contains("different order reference", conflict.Error);
-        Assert.Equal("cs_1", session.ProviderOrderRefId);
+        Assert.Contains("different checkout session reference", conflict.Error);
+        Assert.Equal("cs_1", session.ProviderCheckoutSessionId);
         Assert.Null(session.ProviderSubscriptionRefId);
     }
 
@@ -218,7 +237,7 @@ public sealed class StripeZentitleBillingProviderTests
             .ReturnsAsync(group);
         var session = Session();
         session.Period = period;
-        session.ProviderOrderRefId = "cs_1";
+        session.ProviderCheckoutSessionId = "cs_1";
 
         var checkoutResponse = period == BillingPeriod.Perpetual
             ? """{"id":"cs_1","object":"checkout.session","mode":"payment","status":"complete","payment_status":"paid","client_reference_id":"session-1","payment_intent":"pi_1","metadata":{"customer_ref":"account-ref-1","demo_session_id":"session-1","billing_purpose":"zentitle_purchase"}}"""
@@ -237,9 +256,9 @@ public sealed class StripeZentitleBillingProviderTests
         // assert
         Assert.Null(pending);
         Assert.Same(group, result);
-        Assert.Equal(orderRefId, session.OrderRefId);
-        Assert.Equal(period == BillingPeriod.Perpetual ? null : "sub_1", session.ProviderSubscriptionRefId);
-        Assert.True(session.IsProviderCheckoutVerified);
+        Assert.Equal(orderRefId, session.VerifiedStripeCheckout?.OrderRefId);
+        Assert.Equal(period == BillingPeriod.Perpetual ? null : "sub_1", session.VerifiedStripeCheckout?.SubscriptionRefId);
+        Assert.NotNull(session.VerifiedStripeCheckout);
         zentitle.VerifyAll();
     }
 
@@ -250,7 +269,7 @@ public sealed class StripeZentitleBillingProviderTests
         var resolver = new Mock<IStripeCheckoutResolver>();
         var zentitle = new Mock<IZentitleManagementClient>(MockBehavior.Strict);
         var session = Session();
-        session.ProviderOrderRefId = "cs_1";
+        session.ProviderCheckoutSessionId = "cs_1";
         var provider = Provider(new RecordingStripeHandler([]), zentitle: zentitle.Object, checkoutResolver: resolver.Object);
 
         // act
@@ -259,6 +278,7 @@ public sealed class StripeZentitleBillingProviderTests
         // assert
         Assert.Null(result);
         Assert.Equal("demo-order-1", session.OrderRefId);
+        Assert.Null(session.VerifiedStripeCheckout);
         zentitle.VerifyNoOtherCalls();
     }
 
@@ -267,11 +287,11 @@ public sealed class StripeZentitleBillingProviderTests
     {
         // arrange
         var resolver = new Mock<IStripeCheckoutResolver>();
-        resolver.Setup(x => x.Resolve("cs_1", "session-1", "account-ref-1", "zentitle_purchase", It.IsAny<CancellationToken>(), StripeCheckoutMode.Subscription))
+        resolver.Setup(x => x.Resolve("cs_1", "session-1", "account-ref-1", "zentitle_purchase", StripeCheckoutMode.Subscription, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Mismatched checkout"));
         var zentitle = new Mock<IZentitleManagementClient>(MockBehavior.Strict);
         var session = Session();
-        session.ProviderOrderRefId = "cs_1";
+        session.ProviderCheckoutSessionId = "cs_1";
         var provider = Provider(new RecordingStripeHandler([]), zentitle: zentitle.Object, checkoutResolver: resolver.Object);
 
         // act

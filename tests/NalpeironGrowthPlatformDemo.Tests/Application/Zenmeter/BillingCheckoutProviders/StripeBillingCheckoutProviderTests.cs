@@ -19,7 +19,7 @@ public sealed class StripeBillingCheckoutProviderTests
         // arrange
         var session = Session();
         var resolver = new Mock<IStripeCheckoutResolver>(MockBehavior.Strict);
-        resolver.Setup(x => x.Resolve("cs_1", "session-1", "account-ref-1", "subscription_purchase", It.IsAny<CancellationToken>(), StripeCheckoutMode.Subscription))
+        resolver.Setup(x => x.Resolve("cs_1", "session-1", "account-ref-1", "subscription_purchase", StripeCheckoutMode.Subscription, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StripeCheckoutReferences("in_1", "sub_1"));
         var provider = CreateProvider(new RecordingStripeHandler([]), checkoutResolver: resolver.Object);
 
@@ -39,7 +39,7 @@ public sealed class StripeBillingCheckoutProviderTests
     {
         // arrange
         var resolver = new Mock<IStripeCheckoutResolver>();
-        var setup = resolver.Setup(x => x.Resolve("cs_1", "session-1", "account-ref-1", "subscription_purchase", It.IsAny<CancellationToken>(), StripeCheckoutMode.Subscription));
+        var setup = resolver.Setup(x => x.Resolve("cs_1", "session-1", "account-ref-1", "subscription_purchase", StripeCheckoutMode.Subscription, It.IsAny<CancellationToken>()));
         if (rejected)
         {
             setup.ThrowsAsync(new InvalidOperationException("Mismatched checkout"));

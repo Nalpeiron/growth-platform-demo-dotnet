@@ -121,18 +121,18 @@ public sealed class StripeZentitleBillingProvider(
         ZentitleProviderReturnData returnData)
     {
         if (!ApplyReference(
-                session.ProviderOrderRefId,
+                session.ProviderCheckoutSessionId,
                 returnData.OrderRefId,
-                "order",
+                "checkout session",
                 out var orderRefError))
         {
             return ZentitleProviderReturnResult.Rejected(orderRefError!);
         }
 
         if (!string.IsNullOrWhiteSpace(returnData.OrderRefId) &&
-            string.IsNullOrWhiteSpace(session.ProviderOrderRefId))
+            string.IsNullOrWhiteSpace(session.ProviderCheckoutSessionId))
         {
-            session.ProviderOrderRefId = returnData.OrderRefId;
+            session.ProviderCheckoutSessionId = returnData.OrderRefId;
             session.Events.Add($"Received Stripe Checkout Session reference {returnData.OrderRefId}.");
         }
 
@@ -144,28 +144,27 @@ public sealed class StripeZentitleBillingProvider(
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(session.CustomerId) ||
-            string.IsNullOrWhiteSpace(session.ProviderOrderRefId))
+            string.IsNullOrWhiteSpace(session.ProviderCheckoutSessionId))
         {
             return null;
         }
 
-        if (!session.IsProviderCheckoutVerified)
+        if (session.VerifiedStripeCheckout is null)
         {
             var references = await checkoutResolver.Resolve(
-                session.ProviderOrderRefId, session.SessionId, session.CustomerAccountRefId,
-                "zentitle_purchase", cancellationToken,
-                session.Period == BillingPeriod.Perpetual ? StripeCheckoutMode.Payment : StripeCheckoutMode.Subscription);
+                session.ProviderCheckoutSessionId, session.SessionId, session.CustomerAccountRefId,
+                "zentitle_purchase",
+                session.Period == BillingPeriod.Perpetual ? StripeCheckoutMode.Payment : StripeCheckoutMode.Subscription,
+                cancellationToken);
             if (references is null)
             {
                 return null;
             }
 
-            session.OrderRefId = references.OrderRefId;
-            session.ProviderSubscriptionRefId = references.SubscriptionRefId;
-            session.IsProviderCheckoutVerified = true;
+            session.VerifiedStripeCheckout = references;
         }
 
-        return await zentitle.LookupGroup(session.CustomerId, session.OrderRefId!, cancellationToken);
+        return await zentitle.LookupGroup(session.CustomerId, session.VerifiedStripeCheckout.OrderRefId, cancellationToken);
     }
 
     private static Dictionary<string, string> Metadata(ZentitlePendingCheckout checkout) =>

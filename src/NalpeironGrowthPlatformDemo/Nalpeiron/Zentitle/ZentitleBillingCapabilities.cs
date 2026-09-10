@@ -25,6 +25,8 @@ public sealed record ZentitleBillingCapabilities(
             ? requestedPeriod
             : SupportedPaidPeriods.First();
 
+    // Enable recurrence matching only for providers whose price metadata distinguishes
+    // recurring and one-time prices (currently Stripe).
     public bool SupportsPrice(BillingPeriod period, BillingPrice price) =>
         SupportsPaidPeriod(period) && (!RequiresMatchingPriceRecurrence || period switch
         {

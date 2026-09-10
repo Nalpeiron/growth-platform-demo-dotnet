@@ -19,8 +19,8 @@ public interface IStripeCheckoutResolver
         string demoSessionId,
         string? customerAccountRefId,
         string billingPurpose,
-        CancellationToken cancellationToken,
-        StripeCheckoutMode expectedMode = StripeCheckoutMode.Subscription);
+        StripeCheckoutMode expectedMode,
+        CancellationToken cancellationToken);
 }
 
 public sealed class StripeCheckoutResolver(
@@ -32,8 +32,8 @@ public sealed class StripeCheckoutResolver(
         string demoSessionId,
         string? customerAccountRefId,
         string billingPurpose,
-        CancellationToken cancellationToken,
-        StripeCheckoutMode expectedMode = StripeCheckoutMode.Subscription)
+        StripeCheckoutMode expectedMode,
+        CancellationToken cancellationToken)
     {
         Session session;
         try

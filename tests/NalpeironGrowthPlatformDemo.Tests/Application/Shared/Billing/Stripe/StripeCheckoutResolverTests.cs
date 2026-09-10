@@ -20,7 +20,7 @@ public sealed class StripeCheckoutResolverTests
 
         // act
         var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "zentitle_purchase",
-            CancellationToken.None, StripeCheckoutMode.Payment);
+            StripeCheckoutMode.Payment, CancellationToken.None);
 
         // assert
         Assert.Equal(new StripeCheckoutReferences("pi_1", null), result);
@@ -40,7 +40,7 @@ public sealed class StripeCheckoutResolverTests
 
         // act
         var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "zentitle_purchase",
-            CancellationToken.None, StripeCheckoutMode.Payment);
+            StripeCheckoutMode.Payment, CancellationToken.None);
 
         // assert
         Assert.Null(result);
@@ -70,7 +70,7 @@ public sealed class StripeCheckoutResolverTests
 
         // act
         var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "zentitle_purchase",
-            CancellationToken.None, StripeCheckoutMode.Payment);
+            StripeCheckoutMode.Payment, CancellationToken.None);
 
         // assert
         await Assert.ThrowsAsync<InvalidOperationException>(act);
@@ -89,7 +89,7 @@ public sealed class StripeCheckoutResolverTests
         var resolver = Resolver(checkout);
 
         // act
-        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", purpose, CancellationToken.None);
+        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", purpose, StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         Assert.Equal(new StripeCheckoutReferences("in_1", "sub_1"), result);
@@ -108,7 +108,7 @@ public sealed class StripeCheckoutResolverTests
         var resolver = Resolver(checkout);
 
         // act
-        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", CancellationToken.None);
+        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         Assert.Null(result);
@@ -135,7 +135,7 @@ public sealed class StripeCheckoutResolverTests
         var resolver = Resolver(checkout);
 
         // act
-        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", CancellationToken.None);
+        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         await Assert.ThrowsAsync<InvalidOperationException>(act);
@@ -150,7 +150,7 @@ public sealed class StripeCheckoutResolverTests
         var resolver = Resolver(JsonNode.Parse("""{"error":{"type":"api_error","message":"Retry later"}}""")!, status);
 
         // act
-        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", CancellationToken.None);
+        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         Assert.Null(result);
@@ -163,7 +163,7 @@ public sealed class StripeCheckoutResolverTests
         var resolver = Resolver(JsonNode.Parse("""{"error":{"type":"invalid_request_error","message":"No such session"}}""")!, HttpStatusCode.NotFound);
 
         // act
-        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", CancellationToken.None);
+        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         await Assert.ThrowsAsync<StripeException>(act);

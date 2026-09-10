@@ -48,6 +48,27 @@ public sealed class BillingPriceResolver(
             : provider.TryGetPriceBook(cancellationToken);
     }
 
+    public Task<IReadOnlyDictionary<string, BillingPrice>> GetAvailablePrices(
+        BillingSystem billingSystem,
+        IReadOnlyCollection<string> skus,
+        CancellationToken cancellationToken)
+    {
+        if (!billingOptions.Value.IsEnabled(billingSystem))
+        {
+            throw BillingPriceException.DisabledProvider(billingSystem);
+        }
+
+        if (skus.Count == 0)
+        {
+            return Task.FromResult(EmptyPrices());
+        }
+
+        var provider = providers.SingleOrDefault(provider => provider.BillingSystem == billingSystem);
+        return provider is null
+            ? throw BillingPriceException.MissingProvider(billingSystem)
+            : provider.GetAvailablePrices(skus, cancellationToken);
+    }
+
     private static IReadOnlyDictionary<string, BillingPrice> EmptyPrices() =>
         new Dictionary<string, BillingPrice>(StringComparer.OrdinalIgnoreCase);
 }

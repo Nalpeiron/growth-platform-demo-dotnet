@@ -72,7 +72,7 @@ public sealed class ZenmeterPricingCatalogTests
     }
 
     [Fact]
-    public async Task GetPricing_WhenOfferingPriceIsMissing_Throws()
+    public async Task GetPricing_WhenOfferingPriceIsMissing_OnlyHidesTheMissingOffering()
     {
         // arrange
         var client = new StubZenmeterManagementClient
@@ -94,11 +94,14 @@ public sealed class ZenmeterPricingCatalogTests
             CreateStaticPriceResolver(options));
 
         // act
-        var act = () => catalog.GetPricing(CancellationToken.None);
+        var pricing = await catalog.GetPricing(CancellationToken.None);
 
         // assert
-        var exception = await Assert.ThrowsAsync<BillingPriceException>(act);
-        Assert.Contains("elevate-saas-scale-yearly", exception.Message);
+        var offerings = Assert.Single(pricing.Tiers).Offerings;
+        Assert.True(Assert.Single(offerings, offering => offering.Period == ZenmeterOfferingPeriod.Monthly).IsVisible);
+        var yearly = Assert.Single(offerings, offering => offering.Period == ZenmeterOfferingPeriod.Yearly);
+        Assert.False(yearly.IsVisible);
+        Assert.Equal("price not configured", yearly.BillingLabel);
     }
 
     [Fact]
@@ -259,7 +262,7 @@ public sealed class ZenmeterPricingCatalogTests
     }
 
     [Fact]
-    public async Task GetCompatibleAddons_WhenAddonPriceIsMissing_Throws()
+    public async Task GetCompatibleAddons_WhenAddonPriceIsMissing_OnlyHidesTheMissingAddons()
     {
         // arrange
         var client = new StubZenmeterManagementClient
@@ -281,12 +284,15 @@ public sealed class ZenmeterPricingCatalogTests
             CreateStaticPriceResolver(options));
 
         // act
-        var act = () => catalog.GetCompatibleAddons("elevate-saas-scale-monthly", CancellationToken.None);
+        var addons = await catalog.GetCompatibleAddons("elevate-saas-scale-monthly", CancellationToken.None);
 
         // assert
-        var exception = await Assert.ThrowsAsync<BillingPriceException>(act);
-        Assert.Contains("elevate-saas-credits-500-monthly", exception.Message);
-        Assert.Contains("elevate-saas-credits-500-onetime-1m", exception.Message);
+        Assert.True(Assert.Single(addons, addon => addon.Sku == "elevate-saas-security-suite-1m").IsVisible);
+        Assert.All(addons.Where(addon => addon.Sku != "elevate-saas-security-suite-1m"), addon =>
+        {
+            Assert.False(addon.IsVisible);
+            Assert.Equal("price not configured", addon.BillingLabel);
+        });
     }
 
     [Fact]

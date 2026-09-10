@@ -290,6 +290,11 @@ The product picker and its configured provider variants remain visible regardles
 `EnabledBillingSystems`. Selecting a disabled or unconfigured provider leaves the user on the
 pricing page with a clear configuration error; disabling a provider does not hide its demo button.
 
+Pricing screens tolerate missing SKU prices: Zentitle marks those offerings unavailable, while
+Zenmeter hides the affected offerings or add-ons. Available offerings remain purchasable. Checkout
+still requires prices for every selected SKU. Authentication, transport and invalid-price errors
+continue to surface as errors.
+
 The `Products` section is committed demo navigation copy. The `Zenmeter` section keeps the demo
 product name, business model id and no-billing fallback SKU prices only; tiers, offerings, rates
 and add-on compatibility come from the live API.
