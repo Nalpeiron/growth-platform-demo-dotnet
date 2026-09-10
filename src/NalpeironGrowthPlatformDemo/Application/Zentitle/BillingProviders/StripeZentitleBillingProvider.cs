@@ -149,7 +149,7 @@ public sealed class StripeZentitleBillingProvider(
             return null;
         }
 
-        if (session.VerifiedStripeCheckout is null)
+        if (session.VerifiedProvisioningReferences is null)
         {
             var references = await checkoutResolver.Resolve(
                 session.ProviderCheckoutSessionId, session.SessionId, session.CustomerAccountRefId,
@@ -161,10 +161,11 @@ public sealed class StripeZentitleBillingProvider(
                 return null;
             }
 
-            session.VerifiedStripeCheckout = references;
+            session.VerifiedProvisioningReferences = new VerifiedProvisioningReferences(
+                references.OrderRefId, references.SubscriptionRefId);
         }
 
-        return await zentitle.LookupGroup(session.CustomerId, session.VerifiedStripeCheckout.OrderRefId, cancellationToken);
+        return await zentitle.LookupGroup(session.CustomerId, session.VerifiedProvisioningReferences.OrderRefId, cancellationToken);
     }
 
     private static Dictionary<string, string> Metadata(ZentitlePendingCheckout checkout) =>

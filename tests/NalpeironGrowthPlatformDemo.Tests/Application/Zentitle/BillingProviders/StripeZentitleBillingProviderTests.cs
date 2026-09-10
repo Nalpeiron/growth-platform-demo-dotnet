@@ -223,7 +223,7 @@ public sealed class StripeZentitleBillingProviderTests
     [Theory]
     [InlineData(BillingPeriod.Yearly, "in_1")]
     [InlineData(BillingPeriod.Perpetual, "pi_1")]
-    public async Task FindProvisionedGroup_WithDelayedProvisioning_ReusesVerifiedStripeReference(BillingPeriod period, string orderRefId)
+    public async Task FindProvisionedGroup_WithDelayedProvisioning_ReusesVerifiedProvisioningReferences(BillingPeriod period, string orderRefId)
     {
         // arrange
         var group = new Zt.EntitlementGroupModel { Id = "group-1" };
@@ -251,14 +251,16 @@ public sealed class StripeZentitleBillingProviderTests
 
         // act
         var pending = await provider.FindProvisionedGroup(session, CancellationToken.None);
+        var verifiedReferences = session.VerifiedProvisioningReferences;
         var result = await provider.FindProvisionedGroup(session, CancellationToken.None);
 
         // assert
         Assert.Null(pending);
         Assert.Same(group, result);
-        Assert.Equal(orderRefId, session.VerifiedStripeCheckout?.OrderRefId);
-        Assert.Equal(period == BillingPeriod.Perpetual ? null : "sub_1", session.VerifiedStripeCheckout?.SubscriptionRefId);
-        Assert.NotNull(session.VerifiedStripeCheckout);
+        Assert.Equal(
+            new VerifiedProvisioningReferences(orderRefId, period == BillingPeriod.Perpetual ? null : "sub_1"),
+            session.VerifiedProvisioningReferences);
+        Assert.Same(verifiedReferences, session.VerifiedProvisioningReferences);
         zentitle.VerifyAll();
     }
 
@@ -278,7 +280,7 @@ public sealed class StripeZentitleBillingProviderTests
         // assert
         Assert.Null(result);
         Assert.Equal("demo-order-1", session.OrderRefId);
-        Assert.Null(session.VerifiedStripeCheckout);
+        Assert.Null(session.VerifiedProvisioningReferences);
         zentitle.VerifyNoOtherCalls();
     }
 
@@ -299,6 +301,7 @@ public sealed class StripeZentitleBillingProviderTests
 
         // assert
         await Assert.ThrowsAsync<InvalidOperationException>(act);
+        Assert.Null(session.VerifiedProvisioningReferences);
         zentitle.VerifyNoOtherCalls();
     }
 
