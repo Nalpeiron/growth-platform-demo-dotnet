@@ -11,7 +11,7 @@ public sealed class StripeBillingCheckoutProvider(
     StripeBillingPriceProvider priceProvider,
     StripeBillingClientFactory clientFactory,
     StripeBillingCustomerService customerService,
-    IStripeSubscriptionCheckoutResolver checkoutResolver,
+    IStripeCheckoutResolver checkoutResolver,
     ILogger<StripeBillingCheckoutProvider> logger) : IBillingCheckoutProvider, IBillingProvisioningProvider
 {
     public async Task<BillingReferenceResolution> ResolveSubscriptionReferences(
@@ -43,7 +43,7 @@ public sealed class StripeBillingCheckoutProvider(
         {
             var references = await checkoutResolver.Resolve(
                 checkoutSessionId, session.SessionId, session.CustomerAccountRefId,
-                "subscription_purchase", cancellationToken);
+                "subscription_purchase", StripeCheckoutMode.Subscription, cancellationToken);
             return references is null
                 ? BillingReferenceResolution.Pending()
                 : BillingReferenceResolution.Ready(references.OrderRefId, references.SubscriptionRefId, checkoutSessionId);

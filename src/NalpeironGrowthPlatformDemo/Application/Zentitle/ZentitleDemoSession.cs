@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using NalpeironGrowthPlatformDemo.Application.Shared.Billing;
 using NalpeironGrowthPlatformDemo.Configuration;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle;
 
@@ -18,6 +19,8 @@ public sealed class ElevateSession
     public string? OrderRefId { get; set; }
     public string? ProviderOrderRefId { get; set; }
     public string? ProviderSubscriptionRefId { get; set; }
+    public string? ProviderCheckoutSessionId { get; set; }
+    public VerifiedProvisioningReferences? VerifiedProvisioningReferences { get; set; }
     public string CheckoutStatus { get; set; } = ZentitleCheckoutStatuses.Completed;
     public string? EntitlementGroupId { get; set; }
     public string? EntitlementId { get; set; }

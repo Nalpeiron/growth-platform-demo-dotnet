@@ -46,7 +46,8 @@ public sealed record ZentitlePendingCheckout(
     string CustomerAccountRefId,
     string OrderRefId,
     string OfferingId,
-    string Sku);
+    string Sku,
+    BillingPeriod Period);
 
 public sealed record ZentitleBillingCheckoutResult(
     string Status,

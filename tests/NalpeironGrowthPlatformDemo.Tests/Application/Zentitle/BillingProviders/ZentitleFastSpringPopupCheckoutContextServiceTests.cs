@@ -9,12 +9,16 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zentitle.BillingProvider
 
 public sealed class ZentitleFastSpringPopupCheckoutContextServiceTests
 {
-    [Fact]
-    public async Task Get_WithPendingSession_UsesZentitleStorefrontSkuAndCustomerReference()
+    [Theory]
+    [InlineData(BillingPeriod.Yearly)]
+    [InlineData(BillingPeriod.Perpetual)]
+    public async Task Get_WithPendingSession_UsesZentitleStorefrontSkuAndCustomerReference(BillingPeriod period)
     {
         // arrange
         var store = new InMemoryElevateSessionStore();
-        store.Save(Session());
+        var session = Session();
+        session.Period = period;
+        store.Save(session);
         var service = new ZentitleFastSpringPopupCheckoutContextService(
             store,
             Options.Create(BillingOptions()));

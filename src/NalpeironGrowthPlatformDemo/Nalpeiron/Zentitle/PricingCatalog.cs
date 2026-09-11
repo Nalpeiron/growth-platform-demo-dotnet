@@ -105,8 +105,9 @@ public sealed class PricingCatalog(
     {
         var period = BillingPeriods.From(offering.Plan?.LicenseType, offering.Plan?.PlanType);
         var isTrial = period == BillingPeriod.Trial;
-        var isSupportedPaidPeriod = !isTrial && capabilities.SupportsPaidPeriod(period);
         var sku = offering.Sku ?? string.Empty;
+        var providerPrice = providerPrices?.GetValueOrDefault(sku);
+        var isProviderPriceConfigured = providerPrice is not null && capabilities.SupportsPrice(period, providerPrice);
 
         int priceValue;
         string billingLabel;
@@ -121,11 +122,9 @@ public sealed class PricingCatalog(
             priceValue = price.Price;
             billingLabel = period.DefaultBillingLabel();
         }
-        else if (isSupportedPaidPeriod &&
-                 providerPrices is not null &&
-                 providerPrices.TryGetValue(sku, out var providerPrice))
+        else if (isProviderPriceConfigured)
         {
-            priceValue = providerPrice.Price;
+            priceValue = providerPrice!.Price;
             billingLabel = period.DefaultBillingLabel();
         }
         else
@@ -137,7 +136,7 @@ public sealed class PricingCatalog(
         var isPriceConfigured = isTrial ||
                                 (capabilities.PriceSource == ZentitlePriceSource.Configured
                                     ? options.Value.Prices.ContainsKey(sku)
-                                    : isSupportedPaidPeriod && providerPrices?.ContainsKey(sku) == true);
+                                    : isProviderPriceConfigured);
         return new OfferingPlanPricing(
             offering.Id ?? string.Empty,
             sku,
@@ -168,9 +167,7 @@ public sealed class PricingCatalog(
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         var prices = await billingPrices.GetPrices(billingSystem, paidSkus, cancellationToken);
-        return prices
-            .Where(pair => capabilities.SupportsPrice(pair.Value))
-            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        return prices.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
     }
 
     private static CatalogFeature BuildFeature(FeatureModel feature) =>

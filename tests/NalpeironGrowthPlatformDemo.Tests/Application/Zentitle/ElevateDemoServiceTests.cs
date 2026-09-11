@@ -1,13 +1,17 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using System.Net;
 using Moq;
 using NalpeironGrowthPlatformDemo.Application.Shared;
+using NalpeironGrowthPlatformDemo.Application.Shared.Billing;
+using NalpeironGrowthPlatformDemo.Application.Shared.Billing.Stripe;
 using NalpeironGrowthPlatformDemo.Application.Zentitle;
 using NalpeironGrowthPlatformDemo.Application.Zentitle.BillingProviders;
 using NalpeironGrowthPlatformDemo.Configuration;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Generic;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle;
+using NalpeironGrowthPlatformDemo.Tests.TestHelpers;
 using Zt = NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated;
 using Xunit;
 
@@ -16,18 +20,84 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zentitle;
 public sealed class ElevateDemoServiceTests
 {
     [Fact]
-    public async Task Purchase_WithStripe_StoresCheckoutSessionForProvisioningResume()
+    public async Task Purchase_WithMissingPerpetualStripePrice_KeepsYearlyCheckoutAvailable()
+    {
+        // arrange
+        using var handler = new StubHttpMessageHandler(request =>
+        {
+            Assert.Equal("/v1/prices", request.RequestUri!.AbsolutePath);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"data":[{"id":"price_yearly","lookup_key":"sku-yearly","unit_amount":49900,"currency":"usd","type":"recurring","recurring":{"interval":"year","interval_count":1}}]}""")
+            };
+        });
+        using var httpClient = new HttpClient(handler);
+        var billingOptions = Options.Create(BillingCheckoutTestData.CreateBillingOptions());
+        var priceProvider = new StripeBillingPriceProvider(new StripeBillingClientFactory(
+            new TestHttpClientFactory(httpClient), billingOptions));
+        var priceResolver = new BillingPriceResolver([priceProvider], billingOptions);
+        var stripe = new Mock<IZentitleBillingProvider>(MockBehavior.Strict);
+        stripe.As<IZentitleProvisioningProvider>();
+        stripe.SetupGet(x => x.BillingSystem).Returns(BillingSystem.Stripe);
+        stripe.SetupGet(x => x.Capabilities).Returns(new ZentitleBillingCapabilities(
+            [BillingPeriod.Yearly, BillingPeriod.Perpetual], false, false, true,
+            ZentitlePriceSource.BillingProvider, RequiresMatchingPriceRecurrence: true));
+        stripe.Setup(x => x.ConfigurationUnavailableReason()).Returns((string?)null);
+        stripe.Setup(x => x.CreateCheckout(
+                It.Is<ZentitlePendingCheckout>(checkout => checkout.Sku == "sku-yearly"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ZentitleBillingCheckoutResult.Pending("https://checkout.stripe.test/session", "cs_1"));
+        var registry = new ZentitleBillingProviderRegistry([stripe.Object], billingOptions);
+        var client = new Mock<IZentitleManagementClient>();
+        client.Setup(x => x.GetOfferings("product-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { Zt.LicenseType.Subscription, Zt.LicenseType.Perpetual }.Select(licenseType =>
+            {
+                var period = licenseType == Zt.LicenseType.Perpetual ? "perpetual" : "yearly";
+                return new Zt.OfferingListModel
+                {
+                    Id = $"off-{period}", EditionId = "edition-1", Sku = $"sku-{period}",
+                    Plan = new Zt.OfferingPlanModel { LicenseType = licenseType, PlanType = Zt.PlanType.Paid }
+                };
+            }).ToArray());
+        client.Setup(x => x.GetEditionFeatures("product-1", "edition-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Zt.FeatureModel>());
+        var catalog = new PricingCatalog(client.Object, Options.Create(new ZentitleOptions { ProductId = "product-1" }),
+            new BillingPriceCatalog(priceResolver), registry);
+        var service = CreateService(Plan(true), new StubZentitleManagementClient(), out var customers, out _,
+            stripeProvider: stripe.Object, pricingCatalog: catalog);
+
+        // act
+        var pricing = await service.GetPricing(BillingSystem.Stripe, CancellationToken.None);
+        var yearly = await service.Purchase(BillingSystem.Stripe, "off-yearly", "Acme", "yearly", CancellationToken.None);
+        var perpetual = await service.Purchase(BillingSystem.Stripe, "off-perpetual", "Acme", "perpetual", CancellationToken.None);
+
+        // assert
+        var plans = Assert.Single(pricing).Plans;
+        Assert.True(Assert.Single(plans, plan => plan.Period == BillingPeriod.Yearly).IsPriceConfigured);
+        Assert.False(Assert.Single(plans, plan => plan.Period == BillingPeriod.Perpetual).IsPriceConfigured);
+        Assert.Null(yearly.Error);
+        Assert.NotNull(yearly.SessionId);
+        Assert.Null(perpetual.SessionId);
+        Assert.Contains("price", perpetual.Error);
+        Assert.Equal(1, customers.CreateCalls);
+        stripe.Verify(x => x.CreateCheckout(It.IsAny<ZentitlePendingCheckout>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(BillingPeriod.Yearly)]
+    [InlineData(BillingPeriod.Perpetual)]
+    public async Task Purchase_WithStripe_StoresCheckoutSessionForProvisioningResume(BillingPeriod period)
     {
         // arrange
         var stripe = new Mock<IZentitleBillingProvider>();
         stripe.As<IZentitleProvisioningProvider>();
         stripe.SetupGet(x => x.BillingSystem).Returns(BillingSystem.Stripe);
         stripe.SetupGet(x => x.Capabilities).Returns(new ZentitleBillingCapabilities(
-            [BillingPeriod.Yearly], false, false, true, ZentitlePriceSource.BillingProvider));
-        stripe.Setup(x => x.CreateCheckout(It.IsAny<ZentitlePendingCheckout>(), It.IsAny<CancellationToken>()))
+            [BillingPeriod.Yearly, BillingPeriod.Perpetual], false, false, true, ZentitlePriceSource.BillingProvider));
+        stripe.Setup(x => x.CreateCheckout(It.Is<ZentitlePendingCheckout>(checkout => checkout.Period == period), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ZentitleBillingCheckoutResult.Pending("https://checkout.stripe.test/session", "cs_1"));
         var zentitle = new StubZentitleManagementClient();
-        var service = CreateService(Plan(true), zentitle, out _, out var store, stripeProvider: stripe.Object);
+        var service = CreateService(Plan(true, period: period), zentitle, out _, out var store, stripeProvider: stripe.Object);
 
         // act
         var purchase = await service.Purchase(BillingSystem.Stripe, "off-1", "Acme", "stripe-checkout", CancellationToken.None);
@@ -35,7 +105,8 @@ public sealed class ElevateDemoServiceTests
         // assert
         Assert.Null(purchase.Error);
         var session = Assert.IsType<ElevateSession>(store.Get(purchase.SessionId!));
-        Assert.Equal("cs_1", session.ProviderOrderRefId);
+        Assert.Equal("cs_1", session.ProviderCheckoutSessionId);
+        Assert.Equal(period, session.Period);
         Assert.Equal(ZentitleCheckoutStatuses.Pending, session.CheckoutStatus);
         Assert.Equal(0, zentitle.CreateGroupCalls);
     }
@@ -493,7 +564,7 @@ public sealed class ElevateDemoServiceTests
     }
 
     [Fact]
-    public async Task Purchase_WithFastSpringPerpetualOffering_RejectsItBeforeCreatingACustomer()
+    public async Task Purchase_WithFastSpringPerpetualOffering_StartsCheckout()
     {
         // arrange
         var service = CreateService(
@@ -510,9 +581,10 @@ public sealed class ElevateDemoServiceTests
             CancellationToken.None);
 
         // assert
-        Assert.Null(purchase.SessionId);
-        Assert.Contains("does not support perpetual Zentitle licenses", purchase.Error);
-        Assert.Equal(0, customers.CreateCalls);
+        Assert.NotNull(purchase.SessionId);
+        Assert.Null(purchase.Error);
+        Assert.Contains("sessionId=", purchase.RedirectUrl);
+        Assert.Equal(1, customers.CreateCalls);
     }
 
     [Fact]
@@ -594,7 +666,8 @@ public sealed class ElevateDemoServiceTests
         string zentitleStorefrontUrl = "store.test/popup-zentitle",
         Exception? pricingFailure = null,
         Exception? customerFailure = null,
-        IZentitleBillingProvider? stripeProvider = null)
+        IZentitleBillingProvider? stripeProvider = null,
+        IPricingCatalog? pricingCatalog = null)
     {
         customers = new StubCustomersClient(customerFailure);
         var edition = new EditionPricing("edition-1", "Standard", "", [plan], []);
@@ -622,7 +695,7 @@ public sealed class ElevateDemoServiceTests
             billingOptions,
             NullLogger<ZentitleBillingStatusService>.Instance);
         return new ElevateDemoService(
-            new StubPricingCatalog([edition], pricingFailure),
+            pricingCatalog ?? new StubPricingCatalog([edition], pricingFailure),
             customers,
             zentitle,
             store,

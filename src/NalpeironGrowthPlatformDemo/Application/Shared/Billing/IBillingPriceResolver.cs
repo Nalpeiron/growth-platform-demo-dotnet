@@ -18,6 +18,13 @@ public interface IBillingPriceResolver
         CancellationToken cancellationToken) =>
         GetPrices(BillingSystem.None, skus, cancellationToken);
 
+    // Available catalog prices only; a missing SKU is unavailable, never a free offering.
+    Task<IReadOnlyDictionary<string, BillingPrice>> GetAvailablePrices(
+        BillingSystem billingSystem,
+        IReadOnlyCollection<string> skus,
+        CancellationToken cancellationToken) =>
+        GetPrices(billingSystem, skus, cancellationToken);
+
     // Returns the provider's full price catalogue when it supports bulk listing (FastSpring), so a
     // caller can fetch once per screen and reuse it. Returns null when the provider has no bulk
     // listing and the caller should keep resolving specific SKUs with GetPrices.

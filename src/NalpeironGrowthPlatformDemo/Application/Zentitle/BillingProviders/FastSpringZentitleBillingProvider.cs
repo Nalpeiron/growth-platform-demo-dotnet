@@ -13,7 +13,7 @@ public sealed class FastSpringZentitleBillingProvider(
     public BillingSystem BillingSystem => BillingSystem.FastSpring;
 
     public ZentitleBillingCapabilities Capabilities { get; } = new(
-        [BillingPeriod.Yearly],
+        [BillingPeriod.Yearly, BillingPeriod.Perpetual],
         SupportsTrialCheckout: false,
         SupportsUpgrade: false,
         UsesExternalCheckout: true,

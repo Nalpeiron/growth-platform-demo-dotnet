@@ -15,7 +15,7 @@ public sealed record ZentitleBillingCapabilities(
     bool SupportsUpgrade,
     bool UsesExternalCheckout,
     ZentitlePriceSource PriceSource,
-    BillingPriceRecurrence? RequiredPriceRecurrence = null)
+    bool RequiresMatchingPriceRecurrence = false)
 {
     public bool SupportsPaidPeriod(BillingPeriod period) =>
         SupportedPaidPeriods.Contains(period);
@@ -25,8 +25,15 @@ public sealed record ZentitleBillingCapabilities(
             ? requestedPeriod
             : SupportedPaidPeriods.First();
 
-    public bool SupportsPrice(BillingPrice price) =>
-        RequiredPriceRecurrence is null || price.Recurrence == RequiredPriceRecurrence;
+    // Enable recurrence matching only for providers whose price metadata distinguishes
+    // recurring and one-time prices (currently Stripe).
+    public bool SupportsPrice(BillingPeriod period, BillingPrice price) =>
+        SupportsPaidPeriod(period) && (!RequiresMatchingPriceRecurrence || period switch
+        {
+            BillingPeriod.Yearly => price.Recurrence == new BillingPriceRecurrence(BillingPriceInterval.Year, 1),
+            BillingPeriod.Perpetual => price.Recurrence is null,
+            _ => false
+        });
 }
 
 public interface IZentitleBillingCapabilitiesResolver

@@ -9,7 +9,24 @@ public sealed class StaticBillingPriceProvider(
 {
     public BillingSystem BillingSystem => BillingSystem.None;
 
-    public Task<IReadOnlyDictionary<string, BillingPrice>> GetPrices(
+    public async Task<IReadOnlyDictionary<string, BillingPrice>> GetPrices(
+        IReadOnlyCollection<string> skus,
+        CancellationToken cancellationToken)
+    {
+        var prices = await GetAvailablePrices(skus, cancellationToken);
+        var missingSkus = skus
+            .Where(sku => !string.IsNullOrWhiteSpace(sku) && !prices.ContainsKey(sku))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (missingSkus.Length > 0)
+        {
+            throw BillingPriceException.MissingPrices(BillingSystem, missingSkus);
+        }
+
+        return prices;
+    }
+
+    public Task<IReadOnlyDictionary<string, BillingPrice>> GetAvailablePrices(
         IReadOnlyCollection<string> skus,
         CancellationToken cancellationToken)
     {
@@ -24,14 +41,6 @@ public sealed class StaticBillingPriceProvider(
             {
                 prices[sku] = new BillingPrice(sku, price.Price);
             }
-        }
-
-        var missingSkus = requestedSkus
-            .Where(sku => !prices.ContainsKey(sku))
-            .ToArray();
-        if (missingSkus.Length > 0)
-        {
-            throw BillingPriceException.MissingPrices(BillingSystem, missingSkus);
         }
 
         return Task.FromResult<IReadOnlyDictionary<string, BillingPrice>>(prices);
