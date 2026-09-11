@@ -9,6 +9,45 @@ namespace NalpeironGrowthPlatformDemo.Tests.Nalpeiron.Zenmeter;
 public sealed class ZenmeterManagementClientTests
 {
     [Fact]
+    public async Task CreateSubscription_WithSkus_SendsLineItemsWithQuantityOneToGeneratedClient()
+    {
+        // arrange
+        Zm.CreateSubscriptionApiRequest? request = null;
+        var api = GeneratedClientProxy.Create((method, args) =>
+        {
+            Assert.Equal(nameof(Zm.IZenmeterManagementApiGeneratedClient.ZenmeterSubscriptions_CreateAsync),
+                method.Name);
+            request = Assert.IsType<Zm.CreateSubscriptionApiRequest>(args[0]);
+            return Task.FromResult(new Zm.SubscriptionModel());
+        });
+        var client = new ZenmeterManagementClient(api);
+
+        // act
+        await client.CreateSubscription(
+            "cust_123",
+            ["base-sku", "addon-sku"],
+            "order-123",
+            CancellationToken.None);
+
+        // assert
+        Assert.NotNull(request);
+        Assert.Equal("cust_123", request.CustomerId);
+        Assert.Collection(
+            request.LineItems,
+            item =>
+            {
+                Assert.Equal("base-sku", item.Sku);
+                Assert.Equal(1, item.Quantity);
+            },
+            item =>
+            {
+                Assert.Equal("addon-sku", item.Sku);
+                Assert.Equal(1, item.Quantity);
+            });
+        Assert.Equal("order-123", request.BillingReference?.OrderRefId);
+    }
+
+    [Fact]
     public async Task GetFeatures_WhenGeneratedClientReturnsListModel_ReturnsItems()
     {
         // arrange
@@ -95,7 +134,9 @@ public sealed class ZenmeterManagementClientTests
 
         // assert
         Assert.NotNull(request);
-        Assert.Equal(["credits-50k-onetime"], request.Skus);
+        var lineItem = Assert.Single(request.LineItems);
+        Assert.Equal("credits-50k-onetime", lineItem.Sku);
+        Assert.Equal(1, lineItem.Quantity);
         Assert.NotNull(request.BillingReference);
         Assert.Equal("provider-order-1", request.BillingReference.OrderRefId);
         Assert.Equal(expectedBillingSystem, request.BillingReference.BillingSystem);
@@ -126,7 +167,9 @@ public sealed class ZenmeterManagementClientTests
 
         // assert
         Assert.NotNull(request);
-        Assert.Equal(["credits-50k-onetime"], request.Skus);
+        var lineItem = Assert.Single(request.LineItems);
+        Assert.Equal("credits-50k-onetime", lineItem.Sku);
+        Assert.Equal(1, lineItem.Quantity);
         Assert.Null(request.BillingReference);
     }
 
