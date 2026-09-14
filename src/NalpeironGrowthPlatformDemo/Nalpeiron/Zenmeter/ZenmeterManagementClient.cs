@@ -75,6 +75,7 @@ public sealed class ZenmeterManagementClient(IZenmeterManagementApiGeneratedClie
         api.ZenmeterSubscriptions_CreateAsync(
             new CreateSubscriptionApiRequest
             {
+                StartMode = SubscriptionStartMode.Paid,
                 CustomerId = customerId,
                 LineItems = ToLineItems(skus),
                 BillingReference = CreateBillingReference(orderRefId, billingSystem: null)
