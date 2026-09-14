@@ -14,6 +14,23 @@ public sealed class StripeBillingPriceProvider(
         IReadOnlyCollection<string> skus,
         CancellationToken cancellationToken)
     {
+        var prices = await GetAvailablePrices(skus, cancellationToken);
+        var missingSkus = skus
+            .Where(sku => !string.IsNullOrWhiteSpace(sku) && !prices.ContainsKey(sku))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (missingSkus.Length > 0)
+        {
+            throw BillingPriceException.MissingPrices(BillingSystem, missingSkus);
+        }
+
+        return prices;
+    }
+
+    public async Task<IReadOnlyDictionary<string, BillingPrice>> GetAvailablePrices(
+        IReadOnlyCollection<string> skus,
+        CancellationToken cancellationToken)
+    {
         var requestedSkus = skus
             .Where(sku => !string.IsNullOrWhiteSpace(sku))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -26,7 +43,7 @@ public sealed class StripeBillingPriceProvider(
             stripePrices.TryGetValue(sku, out var price);
             if (price is null || string.IsNullOrWhiteSpace(price.Id))
             {
-                throw BillingPriceException.MissingPrices(BillingSystem, [sku]);
+                continue;
             }
 
             if (price.UnitAmount is null)
@@ -50,14 +67,6 @@ public sealed class StripeBillingPriceProvider(
                         ParseInterval(price.Recurring.Interval, sku),
                         price.Recurring.IntervalCount)
                     : null);
-        }
-
-        var missingSkus = requestedSkus
-            .Where(sku => !prices.ContainsKey(sku))
-            .ToArray();
-        if (missingSkus.Length > 0)
-        {
-            throw BillingPriceException.MissingPrices(BillingSystem, missingSkus);
         }
 
         return prices;

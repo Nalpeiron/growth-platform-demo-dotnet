@@ -7,11 +7,11 @@ const test = require("node:test");
 
 const {
   main,
-  readZentitleYearlyPrices,
+  readZentitlePrices,
 } = require("./update-fastspring-product-prices");
 
-test("readZentitleYearlyPrices returns yearly prices and excludes perpetual prices", () => {
-  const prices = readZentitleYearlyPrices({
+test("readZentitlePrices returns yearly and perpetual prices", () => {
+  const prices = readZentitlePrices({
     Zentitle: {
       Prices: {
         "elevate-standard-yearly": { Price: 499 },
@@ -24,14 +24,16 @@ test("readZentitleYearlyPrices returns yearly prices and excludes perpetual pric
 
   assert.deepEqual(prices, [
     ["elevate-standard-yearly", 499],
+    ["elevate-standard-perpetual", 999],
     ["elevate-premium-yearly", 749],
+    ["elevate-premium-perpetual", 1499],
   ]);
 });
 
-test("readZentitleYearlyPrices rejects ambiguous SKU periods", () => {
+test("readZentitlePrices rejects ambiguous SKU periods", () => {
   assert.throws(
     () =>
-      readZentitleYearlyPrices({
+      readZentitlePrices({
         Zentitle: {
           Prices: {
             "elevate-standard": { Price: 499 },
@@ -42,21 +44,19 @@ test("readZentitleYearlyPrices rejects ambiguous SKU periods", () => {
   );
 });
 
-test("readZentitleYearlyPrices requires at least one yearly SKU", () => {
-  assert.throws(
-    () =>
-      readZentitleYearlyPrices({
-        Zentitle: {
-          Prices: {
-            "elevate-standard-perpetual": { Price: 999 },
-          },
-        },
-      }),
-    /does not contain any '-yearly' SKUs/,
-  );
+test("readZentitlePrices accepts a perpetual-only catalog", () => {
+  const prices = readZentitlePrices({
+    Zentitle: {
+      Prices: {
+        "elevate-standard-perpetual": { Price: 999 },
+      },
+    },
+  });
+
+  assert.deepEqual(prices, [["elevate-standard-perpetual", 999]]);
 });
 
-test("Zentitle entrypoint never sends perpetual SKUs to FastSpring", async (t) => {
+test("Zentitle entrypoint previews and updates yearly and perpetual prices", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "ngp-zentitle-price-update-"),
   );
@@ -76,7 +76,22 @@ test("Zentitle entrypoint never sends perpetual SKUs to FastSpring", async (t) =
   );
 
   const requestedProductPaths = [];
-  const server = http.createServer((request, response) => {
+  const updatedProducts = [];
+  const server = http.createServer(async (request, response) => {
+    if (request.method === "POST" && request.url === "/products") {
+      const chunks = [];
+      for await (const chunk of request) {
+        chunks.push(chunk);
+      }
+      const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      updatedProducts.push(...body.products);
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({
+        products: body.products.map(({ product }) => ({ product, result: "success" })),
+      }));
+      return;
+    }
+
     if (request.method !== "GET" || !request.url.startsWith("/products/")) {
       response.writeHead(405);
       response.end();
@@ -94,7 +109,7 @@ test("Zentitle entrypoint never sends perpetual SKUs to FastSpring", async (t) =
           {
             product: productPath,
             display: { en: productPath },
-            pricing: { price: { USD: 499 } },
+            pricing: { price: { USD: 100 } },
           },
         ],
       }),
@@ -104,7 +119,7 @@ test("Zentitle entrypoint never sends perpetual SKUs to FastSpring", async (t) =
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const address = server.address();
 
-  await main([
+  const args = [
     "--appsettings",
     appsettingsPath,
     "--api-username",
@@ -113,8 +128,20 @@ test("Zentitle entrypoint never sends perpetual SKUs to FastSpring", async (t) =
     "api-password",
     "--base-url",
     `http://127.0.0.1:${address.port}/`,
-    "--dry-run",
-  ]);
+  ];
 
-  assert.deepEqual(requestedProductPaths, ["elevate-standard-yearly"]);
+  await main([...args, "--dry-run"]);
+
+  assert.deepEqual(requestedProductPaths, [
+    "elevate-standard-yearly",
+    "elevate-standard-perpetual",
+  ]);
+  assert.deepEqual(updatedProducts, []);
+
+  await main(args);
+
+  assert.deepEqual(updatedProducts.map(({ product, pricing }) => [product, pricing.price.USD]), [
+    ["elevate-standard-yearly", 499],
+    ["elevate-standard-perpetual", 999],
+  ]);
 });

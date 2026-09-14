@@ -5,6 +5,8 @@
 - Do not stage files or create commits unless the user explicitly asks for it after review.
 - Do not revert user changes unless the user explicitly asks for it.
 - Keep edits scoped to the requested demo application.
+- Keep README and other public documentation self-contained for GitHub readers. Do not include
+  internal Jira links, internal change/deployment references, or MR-specific verification status.
 
 ## Project Goal
 

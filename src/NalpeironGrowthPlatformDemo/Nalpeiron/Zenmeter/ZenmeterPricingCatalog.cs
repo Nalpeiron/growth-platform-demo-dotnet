@@ -121,7 +121,7 @@ public sealed class ZenmeterPricingCatalog(
         CancellationToken cancellationToken)
     {
         var businessModel = await GetBusinessModel(cancellationToken);
-        var prices = await priceResolver.GetPrices(billingSystem, TierOfferingSkus(businessModel), cancellationToken);
+        var prices = await priceResolver.GetAvailablePrices(billingSystem, TierOfferingSkus(businessModel), cancellationToken);
 
         var tiers = (businessModel.Tiers)
             .Select(tier => BuildTier(tier, prices))
@@ -179,7 +179,7 @@ public sealed class ZenmeterPricingCatalog(
             return [];
         }
 
-        var prices = await priceResolver.GetPrices(billingSystem, AddonOfferingSkus(result), cancellationToken);
+        var prices = await priceResolver.GetAvailablePrices(billingSystem, AddonOfferingSkus(result), cancellationToken);
         return BuildCompatibleAddons(result, prices);
     }
 

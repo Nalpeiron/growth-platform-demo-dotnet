@@ -11,6 +11,38 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Shared.Billing.Stripe;
 public sealed class StripeBillingPriceProviderTests
 {
     [Fact]
+    public async Task GetAvailablePrices_WithMissingSku_ReturnsOnlyConfiguredPrices()
+    {
+        // arrange
+        var provider = CreateProvider(new RecordingStripePriceHandler([
+            """{"data":[{"id":"price_year","lookup_key":"sku-yearly","unit_amount":49900,"currency":"usd","type":"recurring","recurring":{"interval":"year","interval_count":1}}]}"""
+        ]));
+
+        // act
+        var prices = await provider.GetAvailablePrices(["sku-yearly", "sku-perpetual"], CancellationToken.None);
+
+        // assert
+        Assert.Equal("sku-yearly", Assert.Single(prices).Key);
+        Assert.Equal(499, prices["sku-yearly"].Price);
+    }
+
+    [Fact]
+    public async Task GetAvailablePrices_WithInvalidCurrency_StillThrows()
+    {
+        // arrange
+        var provider = CreateProvider(new RecordingStripePriceHandler([
+            """{"data":[{"id":"price_eur","lookup_key":"sku-eur","unit_amount":4900,"currency":"eur"}]}"""
+        ]));
+
+        // act
+        var act = () => provider.GetAvailablePrices(["sku-eur", "missing"], CancellationToken.None);
+
+        // assert
+        var exception = await Assert.ThrowsAsync<BillingPriceException>(act);
+        Assert.Contains("expected USD", exception.Message);
+    }
+
+    [Fact]
     public async Task GetPrices_WithSkus_UsesStripeLookupKeysAndMapsUsdUnitAmount()
     {
         // arrange

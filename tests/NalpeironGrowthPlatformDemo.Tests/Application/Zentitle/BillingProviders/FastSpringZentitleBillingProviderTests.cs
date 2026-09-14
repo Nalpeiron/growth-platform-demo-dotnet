@@ -13,29 +13,31 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zentitle.BillingProvider
 public sealed class FastSpringZentitleBillingProviderTests
 {
     [Fact]
-    public void Capabilities_WhenRead_SupportOnlyYearlyExternalCheckout()
+    public void Capabilities_WhenRead_SupportYearlyAndPerpetualExternalCheckout()
     {
         // arrange
         var provider = Provider();
 
         // assert
         Assert.Equal(BillingSystem.FastSpring, provider.BillingSystem);
-        Assert.Equal([BillingPeriod.Yearly], provider.Capabilities.SupportedPaidPeriods);
-        Assert.False(provider.Capabilities.SupportsPaidPeriod(BillingPeriod.Perpetual));
+        Assert.Equal([BillingPeriod.Yearly, BillingPeriod.Perpetual], provider.Capabilities.SupportedPaidPeriods);
+        Assert.True(provider.Capabilities.SupportsPaidPeriod(BillingPeriod.Perpetual));
         Assert.False(provider.Capabilities.SupportsTrialCheckout);
         Assert.False(provider.Capabilities.SupportsUpgrade);
         Assert.True(provider.Capabilities.UsesExternalCheckout);
         Assert.Equal(ZentitlePriceSource.BillingProvider, provider.Capabilities.PriceSource);
     }
 
-    [Fact]
-    public async Task CreateCheckout_WithPendingCheckout_ReturnsProductSpecificPopupAndCancelUrls()
+    [Theory]
+    [InlineData(BillingPeriod.Yearly)]
+    [InlineData(BillingPeriod.Perpetual)]
+    public async Task CreateCheckout_WithPendingCheckout_ReturnsProductSpecificPopupAndCancelUrls(BillingPeriod period)
     {
         // arrange
         var provider = Provider();
 
         // act
-        var result = await provider.CreateCheckout(PendingCheckout(), CancellationToken.None);
+        var result = await provider.CreateCheckout(PendingCheckout() with { Period = period }, CancellationToken.None);
 
         // assert
         var popup = new Uri($"https://demo.test{result.RedirectUrl}");
@@ -117,8 +119,10 @@ public sealed class FastSpringZentitleBillingProviderTests
         Assert.Equal("original-subscription", session.ProviderSubscriptionRefId);
     }
 
-    [Fact]
-    public async Task FindProvisionedGroup_WithProviderOrderRef_LooksUpByCustomerAndProviderOrderRef()
+    [Theory]
+    [InlineData(BillingPeriod.Yearly)]
+    [InlineData(BillingPeriod.Perpetual)]
+    public async Task FindProvisionedGroup_WithProviderOrderRef_LooksUpByCustomerAndProviderOrderRef(BillingPeriod period)
     {
         // arrange
         var group = new Zt.EntitlementGroupModel { Id = "group-1" };
@@ -131,6 +135,7 @@ public sealed class FastSpringZentitleBillingProviderTests
             .ReturnsAsync(group);
         var provider = Provider(BillingOptions(), zentitle.Object);
         var session = Session();
+        session.Period = period;
         session.ProviderOrderRefId = "provider-order-1";
 
         // act
@@ -167,7 +172,7 @@ public sealed class FastSpringZentitleBillingProviderTests
             "account-ref-1",
             "demo-order-1",
             "offering-1",
-            "sku-1");
+            "sku-1", BillingPeriod.Yearly);
 
     private static ElevateSession Session() =>
         new()

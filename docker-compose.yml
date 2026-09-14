@@ -26,8 +26,8 @@ services:
       # Zenmeter (SaaS metering) product.
       Zenmeter__BusinessModelId: "${ZENMETER_BUSINESS_MODEL_ID}"
       # Static SKU prices are used by the /elevate/saas/default (None) variant.
-      # Product routes are explicit; this only controls which provider Program.cs's Zenmeter
-      # debug pricing endpoint uses when no billing system is specified.
+      # Provider for /elevate/saas, unknown-provider Zenmeter pricing/checkout fallbacks,
+      # price resolution without an explicit provider, and the Zenmeter debug pricing endpoint.
       Billing__DefaultBillingSystem: "${BILLING_DEFAULT_SYSTEM:-None}"
       # The containerized sales demo exposes every billing integration. Local dotnet runs default
       # to the direct None flow; see README.md for enabling providers selectively.

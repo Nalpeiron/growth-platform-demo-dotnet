@@ -6,11 +6,11 @@ const {
 } = require("../fastspring/product-price-updater");
 
 const ScriptPath = "scripts/zentitle/update-fastspring-product-prices.js";
-const PriceSource = "Zentitle.Prices (yearly SKUs only)";
+const PriceSource = "Zentitle.Prices (yearly and perpetual SKUs)";
 const YearlySkuSuffix = "-yearly";
 const PerpetualSkuSuffix = "-perpetual";
 
-function readZentitleYearlyPrices(configuration) {
+function readZentitlePrices(configuration) {
   const prices = readConfiguredPrices(configuration, "Zentitle");
   const unsupportedSkus = prices
     .map(([sku]) => sku)
@@ -25,23 +25,16 @@ function readZentitleYearlyPrices(configuration) {
     );
   }
 
-  const yearlyPrices = prices.filter(([sku]) => sku.endsWith(YearlySkuSuffix));
-  if (yearlyPrices.length === 0) {
-    throw new Error(
-      `Zentitle.Prices does not contain any '${YearlySkuSuffix}' SKUs for FastSpring.`,
-    );
-  }
-
-  return yearlyPrices;
+  return prices;
 }
 
 async function main(args = process.argv.slice(2)) {
   await runProductPriceUpdate({
     args,
-    productName: "Zentitle yearly",
+    productName: "Zentitle",
     scriptPath: ScriptPath,
     priceSource: PriceSource,
-    readPrices: readZentitleYearlyPrices,
+    readPrices: readZentitlePrices,
   });
 }
 
@@ -54,5 +47,5 @@ if (require.main === module) {
 
 module.exports = {
   main,
-  readZentitleYearlyPrices,
+  readZentitlePrices,
 };

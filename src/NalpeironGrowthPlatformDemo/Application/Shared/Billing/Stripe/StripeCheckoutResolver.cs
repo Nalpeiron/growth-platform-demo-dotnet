@@ -4,27 +4,35 @@ using Stripe.Checkout;
 
 namespace NalpeironGrowthPlatformDemo.Application.Shared.Billing.Stripe;
 
-public sealed record StripeSubscriptionCheckoutReferences(string OrderRefId, string SubscriptionRefId);
-
-public interface IStripeSubscriptionCheckoutResolver
+public enum StripeCheckoutMode
 {
-    Task<StripeSubscriptionCheckoutReferences?> Resolve(
+    Subscription,
+    Payment
+}
+
+public sealed record StripeCheckoutReferences(string OrderRefId, string? SubscriptionRefId);
+
+public interface IStripeCheckoutResolver
+{
+    Task<StripeCheckoutReferences?> Resolve(
         string checkoutSessionId,
         string demoSessionId,
         string? customerAccountRefId,
         string billingPurpose,
+        StripeCheckoutMode expectedMode,
         CancellationToken cancellationToken);
 }
 
-public sealed class StripeSubscriptionCheckoutResolver(
+public sealed class StripeCheckoutResolver(
     StripeBillingClientFactory clientFactory,
-    ILogger<StripeSubscriptionCheckoutResolver> logger) : IStripeSubscriptionCheckoutResolver
+    ILogger<StripeCheckoutResolver> logger) : IStripeCheckoutResolver
 {
-    public async Task<StripeSubscriptionCheckoutReferences?> Resolve(
+    public async Task<StripeCheckoutReferences?> Resolve(
         string checkoutSessionId,
         string demoSessionId,
         string? customerAccountRefId,
         string billingPurpose,
+        StripeCheckoutMode expectedMode,
         CancellationToken cancellationToken)
     {
         Session session;
@@ -37,24 +45,25 @@ public sealed class StripeSubscriptionCheckoutResolver(
         catch (StripeException exception) when (
             exception.HttpStatusCode == HttpStatusCode.TooManyRequests || (int)exception.HttpStatusCode >= 500)
         {
-            logger.LogWarning(exception, "Stripe subscription checkout lookup is temporarily unavailable.");
+            logger.LogWarning(exception, "Stripe checkout lookup is temporarily unavailable.");
             return null;
         }
         catch (HttpRequestException exception)
         {
-            logger.LogWarning(exception, "Stripe subscription checkout lookup could not connect.");
+            logger.LogWarning(exception, "Stripe checkout lookup could not connect.");
             return null;
         }
         catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(exception, "Stripe subscription checkout lookup timed out.");
+            logger.LogWarning(exception, "Stripe checkout lookup timed out.");
             return null;
         }
 
         // Resolve references only from the checkout belonging to this demo purchase, never from
-        // unverified invoice/subscription ids supplied in the browser return URL.
+        // unverified payment, invoice or subscription ids supplied in the browser return URL.
         if (session.Id != checkoutSessionId || session.Object != "checkout.session" ||
-            session.Mode != "subscription" || session.ClientReferenceId != demoSessionId ||
+            session.Mode != (expectedMode == StripeCheckoutMode.Payment ? "payment" : "subscription") ||
+            session.ClientReferenceId != demoSessionId ||
             string.IsNullOrWhiteSpace(customerAccountRefId) ||
             !HasMetadata(session, StripeMetadataKeys.CustomerRef, customerAccountRefId) ||
             !HasMetadata(session, StripeMetadataKeys.DemoSessionId, demoSessionId) ||
@@ -68,13 +77,27 @@ public sealed class StripeSubscriptionCheckoutResolver(
             throw new InvalidOperationException("The Stripe Checkout Session has expired.");
         }
 
+        if (expectedMode == StripeCheckoutMode.Payment)
+        {
+            // Orion provisions non-invoiced perpetual purchases using the PaymentIntent ID.
+            if (!string.IsNullOrWhiteSpace(session.InvoiceId) || !string.IsNullOrWhiteSpace(session.SubscriptionId))
+            {
+                throw new InvalidOperationException("The Stripe payment checkout unexpectedly contains an invoice or subscription.");
+            }
+
+            return session.Status == "complete" && session.PaymentStatus == "paid" &&
+                   !string.IsNullOrWhiteSpace(session.PaymentIntentId)
+                ? new StripeCheckoutReferences(session.PaymentIntentId, null)
+                : null;
+        }
+
         if (session.Status != "complete" || session.PaymentStatus is not ("paid" or "no_payment_required") ||
             string.IsNullOrWhiteSpace(session.InvoiceId) || string.IsNullOrWhiteSpace(session.SubscriptionId))
         {
             return null;
         }
 
-        return new StripeSubscriptionCheckoutReferences(session.InvoiceId, session.SubscriptionId);
+        return new StripeCheckoutReferences(session.InvoiceId, session.SubscriptionId);
     }
 
     private static bool HasMetadata(Session session, string key, string expected) =>

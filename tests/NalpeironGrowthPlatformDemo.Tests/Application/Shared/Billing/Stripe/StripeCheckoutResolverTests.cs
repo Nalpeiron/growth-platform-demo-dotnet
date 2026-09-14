@@ -10,8 +10,72 @@ using Xunit;
 
 namespace NalpeironGrowthPlatformDemo.Tests.Application.Shared.Billing.Stripe;
 
-public sealed class StripeSubscriptionCheckoutResolverTests
+public sealed class StripeCheckoutResolverTests
 {
+    [Fact]
+    public async Task Resolve_WithPaidPerpetualCheckout_ReturnsPaymentIntentReference()
+    {
+        // arrange
+        var resolver = Resolver(PaymentCheckout());
+
+        // act
+        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "zentitle_purchase",
+            StripeCheckoutMode.Payment, CancellationToken.None);
+
+        // assert
+        Assert.Equal(new StripeCheckoutReferences("pi_1", null), result);
+    }
+
+    [Theory]
+    [InlineData("status", "open")]
+    [InlineData("payment_status", "unpaid")]
+    [InlineData("payment_status", "no_payment_required")]
+    [InlineData("payment_intent", null)]
+    public async Task Resolve_WithPendingPerpetualPayment_ReturnsNull(string field, string? value)
+    {
+        // arrange
+        var checkout = PaymentCheckout();
+        checkout[field] = value;
+        var resolver = Resolver(checkout);
+
+        // act
+        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "zentitle_purchase",
+            StripeCheckoutMode.Payment, CancellationToken.None);
+
+        // assert
+        Assert.Null(result);
+    }
+
+    [Theory]
+    [InlineData("id", "cs_other")]
+    [InlineData("object", "payment_intent")]
+    [InlineData("mode", "subscription")]
+    [InlineData("client_reference_id", "other-session")]
+    [InlineData("customer_ref", "other-customer")]
+    [InlineData("demo_session_id", "other-session")]
+    [InlineData("billing_purpose", "subscription_purchase")]
+    [InlineData("billing_purpose", null)]
+    [InlineData("status", "expired")]
+    [InlineData("invoice", "in_1")]
+    [InlineData("subscription", "sub_1")]
+    public async Task Resolve_WithExpiredOrMismatchedPerpetualCheckout_Throws(string field, string? value)
+    {
+        // arrange
+        var checkout = PaymentCheckout();
+        var target = field is "customer_ref" or "demo_session_id" or "billing_purpose"
+            ? checkout["metadata"]!
+            : checkout;
+        target[field] = value;
+        var resolver = Resolver(checkout);
+
+        // act
+        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "zentitle_purchase",
+            StripeCheckoutMode.Payment, CancellationToken.None);
+
+        // assert
+        await Assert.ThrowsAsync<InvalidOperationException>(act);
+    }
+
     [Theory]
     [InlineData("subscription_purchase", "paid")]
     [InlineData("zentitle_purchase", "paid")]
@@ -25,10 +89,10 @@ public sealed class StripeSubscriptionCheckoutResolverTests
         var resolver = Resolver(checkout);
 
         // act
-        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", purpose, CancellationToken.None);
+        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", purpose, StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
-        Assert.Equal(new StripeSubscriptionCheckoutReferences("in_1", "sub_1"), result);
+        Assert.Equal(new StripeCheckoutReferences("in_1", "sub_1"), result);
     }
 
     [Theory]
@@ -44,7 +108,7 @@ public sealed class StripeSubscriptionCheckoutResolverTests
         var resolver = Resolver(checkout);
 
         // act
-        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", CancellationToken.None);
+        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         Assert.Null(result);
@@ -71,7 +135,7 @@ public sealed class StripeSubscriptionCheckoutResolverTests
         var resolver = Resolver(checkout);
 
         // act
-        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", CancellationToken.None);
+        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         await Assert.ThrowsAsync<InvalidOperationException>(act);
@@ -86,7 +150,7 @@ public sealed class StripeSubscriptionCheckoutResolverTests
         var resolver = Resolver(JsonNode.Parse("""{"error":{"type":"api_error","message":"Retry later"}}""")!, status);
 
         // act
-        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", CancellationToken.None);
+        var result = await resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         Assert.Null(result);
@@ -99,10 +163,21 @@ public sealed class StripeSubscriptionCheckoutResolverTests
         var resolver = Resolver(JsonNode.Parse("""{"error":{"type":"invalid_request_error","message":"No such session"}}""")!, HttpStatusCode.NotFound);
 
         // act
-        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", CancellationToken.None);
+        var act = () => resolver.Resolve("cs_1", "session-1", "_demo-z2-customer", "subscription_purchase", StripeCheckoutMode.Subscription, CancellationToken.None);
 
         // assert
         await Assert.ThrowsAsync<StripeException>(act);
+    }
+
+    private static JsonNode PaymentCheckout()
+    {
+        var checkout = Checkout();
+        checkout["mode"] = "payment";
+        checkout["invoice"] = null;
+        checkout["subscription"] = null;
+        checkout["payment_intent"] = "pi_1";
+        checkout["metadata"]!["billing_purpose"] = "zentitle_purchase";
+        return checkout;
     }
 
     private static JsonNode Checkout() => JsonNode.Parse("""
@@ -111,14 +186,14 @@ public sealed class StripeSubscriptionCheckoutResolverTests
          "metadata":{"customer_ref":"_demo-z2-customer","demo_session_id":"session-1","billing_purpose":"subscription_purchase"}}
         """)!;
 
-    private static StripeSubscriptionCheckoutResolver Resolver(JsonNode response, HttpStatusCode status = HttpStatusCode.OK) =>
+    private static StripeCheckoutResolver Resolver(JsonNode response, HttpStatusCode status = HttpStatusCode.OK) =>
         new(new StripeBillingClientFactory(
                 new TestHttpClientFactory(new HttpClient(new CheckoutHandler(response.ToJsonString(), status))),
                 Options.Create(new BillingOptions
                 {
                     Stripe = new StripeBillingOptions { ApiUrl = "https://stripe.test", SecretKey = "sk_test" }
                 })),
-            NullLogger<StripeSubscriptionCheckoutResolver>.Instance);
+            NullLogger<StripeCheckoutResolver>.Instance);
 
     private sealed class CheckoutHandler(string response, HttpStatusCode status) : HttpMessageHandler
     {
