@@ -3,6 +3,7 @@ using NalpeironGrowthPlatformDemo.Application.Shared;
 using NalpeironGrowthPlatformDemo.Configuration;
 using NalpeironGrowthPlatformDemo.Domain;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
+using Zenmeter.Consumption.Client.Models;
 
 namespace NalpeironGrowthPlatformDemo.Application.Zenmeter;
 
@@ -25,11 +26,6 @@ public sealed class ZenmeterDemoSession
     public string? ProviderCheckoutSessionId { get; set; }
     public string CheckoutStatus { get; set; } = ZenmeterCheckoutStatuses.Completed;
     public ZenmeterPendingTopUp? PendingTopUp { get; set; }
-    public Dictionary<string, ZenmeterMeterUsageSnapshot> MeterUsage { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-    public Dictionary<string, Dictionary<string, ZenmeterMeterSourceUsageSnapshot>> MeterSourceUsage { get; } =
-        new(StringComparer.OrdinalIgnoreCase);
-
     public List<string> Events { get; } = [];
 
     public ZenmeterDemoSessionSnapshot ToSnapshot() =>
@@ -50,23 +46,8 @@ public sealed class ZenmeterDemoSession
             SubscriptionRefId,
             CheckoutStatus,
             PendingTopUp,
-            MeterUsage.ToDictionary(
-                pair => pair.Key,
-                pair => pair.Value,
-                StringComparer.OrdinalIgnoreCase),
-            MeterSourceUsage.ToDictionary(
-                pair => pair.Key,
-                pair => (IReadOnlyDictionary<string, ZenmeterMeterSourceUsageSnapshot>)pair.Value.ToDictionary(
-                    inner => inner.Key,
-                    inner => inner.Value,
-                    StringComparer.OrdinalIgnoreCase),
-                StringComparer.OrdinalIgnoreCase),
             Events.ToList());
 }
-
-public sealed record ZenmeterMeterUsageSnapshot(decimal Used, decimal? Available, long? Limit);
-
-public sealed record ZenmeterMeterSourceUsageSnapshot(decimal Used);
 
 public sealed record ZenmeterUserDetails(
     string ExternalUserId,
@@ -99,8 +80,6 @@ public sealed record ZenmeterDemoSessionSnapshot(
     string? SubscriptionRefId,
     string CheckoutStatus,
     ZenmeterPendingTopUp? PendingTopUp,
-    IReadOnlyDictionary<string, ZenmeterMeterUsageSnapshot> MeterUsage,
-    IReadOnlyDictionary<string, IReadOnlyDictionary<string, ZenmeterMeterSourceUsageSnapshot>> MeterSourceUsage,
     IReadOnlyList<string> Events);
 
 public interface IZenmeterDemoSessionStore
@@ -220,8 +199,8 @@ public sealed record ZenmeterBillingStatus(
     BillingSystem BillingSystem);
 
 public sealed record ZenmeterUsageViewUpdate(
-    IReadOnlyDictionary<string, ZenmeterMeterUsageSnapshot> MeterUsage,
-    IReadOnlyDictionary<string, IReadOnlyDictionary<string, ZenmeterMeterSourceUsageSnapshot>> MeterSourceUsage,
+    string SubscriptionId,
+    ConsumedSubscriptionFeature? Consumption,
     IReadOnlyList<string> Events);
 
 public sealed record ZenmeterUsageActionResult(
@@ -291,6 +270,9 @@ public sealed record ZenmeterMeterUsageView(
     // Usage percentage at (or above) which the top-up prompt is shown. Shared by the server-side
     // projector and the client-side in-place usage updater so the two never drift apart.
     public const int TopUpThresholdPercent = 80;
+
+    internal IReadOnlyDictionary<string, (string Label, string TermLabel)> SourceLabels { get; init; } =
+        new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed record ZenmeterMeterSourceUsageView(

@@ -47,64 +47,6 @@ public sealed class ZenmeterManagementClientTests
         Assert.Equal("order-123", request.BillingReference?.OrderRefId);
     }
 
-    [Fact]
-    public async Task GetFeatures_WhenGeneratedClientReturnsListModel_ReturnsItems()
-    {
-        // arrange
-        var api = GeneratedClientProxy.Create((method, args) =>
-        {
-            Assert.Equal(nameof(Zm.IZenmeterManagementApiGeneratedClient.ZenmeterSubscriptions_GetFeaturesAsync),
-                method.Name);
-            Assert.Equal("zm-sub_123", args[0]);
-            return Task.FromResult(new Zm.SubscriptionFeatureListModel
-            {
-                Items =
-                [
-                    new Zm.SubscriptionFeatureListItemModel
-                    {
-                        Reference = new Zm.FeatureReferenceModel { Key = "ai-campaign-draft" }
-                    }
-                ]
-            });
-        });
-        var client = new ZenmeterManagementClient(api);
-
-        // act
-        var features = await client.GetFeatures("zm-sub_123", CancellationToken.None);
-
-        // assert
-        Assert.Equal("ai-campaign-draft", Assert.Single(features).Reference.Key);
-    }
-
-    [Fact]
-    public async Task GetMeters_WhenGeneratedClientReturnsListModel_ReturnsItems()
-    {
-        // arrange
-        var api = GeneratedClientProxy.Create((method, args) =>
-        {
-            Assert.Equal(nameof(Zm.IZenmeterManagementApiGeneratedClient.ZenmeterSubscriptions_GetMetersAsync),
-                method.Name);
-            Assert.Equal("zm-sub_123", args[0]);
-            return Task.FromResult(new Zm.SubscriptionMeterListModel
-            {
-                Items =
-                [
-                    new Zm.SubscriptionMeterListItemModel
-                    {
-                        Reference = new Zm.MeterReferenceModel { Key = "credits" }
-                    }
-                ]
-            });
-        });
-        var client = new ZenmeterManagementClient(api);
-
-        // act
-        var meters = await client.GetMeters("zm-sub_123", CancellationToken.None);
-
-        // assert
-        Assert.Equal("credits", Assert.Single(meters).Reference.Key);
-    }
-
     [Theory]
     [InlineData(BillingSystem.FastSpring, "FastSpring")]
     [InlineData(BillingSystem.Stripe, "Stripe")]

@@ -606,16 +606,6 @@ public sealed class ZenmeterPricingCatalogTests
             CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<Zm.SubscriptionFeatureListItemModel>> GetFeatures(
-            string subscriptionId,
-            CancellationToken cancellationToken) =>
-            throw new NotSupportedException();
-
-        public Task<IReadOnlyList<Zm.SubscriptionMeterListItemModel>> GetMeters(
-            string subscriptionId,
-            CancellationToken cancellationToken) =>
-            throw new NotSupportedException();
-
         public Task AddAddons(
             string subscriptionId,
             IReadOnlyList<string> skus,

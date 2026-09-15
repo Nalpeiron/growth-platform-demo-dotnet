@@ -34,16 +34,6 @@ internal abstract class UnsupportedZenmeterManagementClient : IZenmeterManagemen
         CancellationToken cancellationToken) =>
         throw new NotSupportedException();
 
-    public virtual Task<IReadOnlyList<Zm.SubscriptionFeatureListItemModel>> GetFeatures(
-        string subscriptionId,
-        CancellationToken cancellationToken) =>
-        throw new NotSupportedException();
-
-    public virtual Task<IReadOnlyList<Zm.SubscriptionMeterListItemModel>> GetMeters(
-        string subscriptionId,
-        CancellationToken cancellationToken) =>
-        throw new NotSupportedException();
-
     public virtual Task AddAddons(
         string subscriptionId,
         IReadOnlyList<string> skus,

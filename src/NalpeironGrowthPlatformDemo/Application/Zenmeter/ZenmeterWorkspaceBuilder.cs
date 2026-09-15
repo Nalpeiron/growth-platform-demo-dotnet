@@ -1,6 +1,7 @@
 using NalpeironGrowthPlatformDemo.Application.Shared;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated;
+using Sdk = Zenmeter.Consumption.Client.Models;
 
 namespace NalpeironGrowthPlatformDemo.Application.Zenmeter;
 
@@ -11,14 +12,20 @@ internal static class ZenmeterWorkspaceBuilder
         ZenmeterTierPricing tier,
         ZenmeterOfferingPricing? plan,
         SubscriptionModel? subscription,
-        IReadOnlyList<SubscriptionFeatureListItemModel> features,
-        IReadOnlyList<SubscriptionMeterListItemModel> meters,
+        IReadOnlyList<Sdk.Feature> features,
+        IReadOnlyList<Sdk.Meter> meters,
+        IReadOnlyList<Sdk.BalanceSnapshot> balances,
         SubscriptionUserModel? user,
         IReadOnlyList<ZenmeterTopUpOptionView> topUpOptions,
         IReadOnlyDictionary<string, ZenmeterFeatureRatePricing> featureRates,
         string webBase)
     {
         var dataIssues = new ZenmeterWorkspaceIssueCollector();
+        if (subscription is null)
+        {
+            dataIssues.Add("Subscription details are unavailable. Add-on access grants could not be verified.");
+        }
+
         if (user is null)
         {
             dataIssues.Add(
@@ -26,6 +33,10 @@ internal static class ZenmeterWorkspaceBuilder
         }
 
         var addons = subscription?.Addons?.ToList() ?? [];
+        var activeAddonIds = addons
+            .Where(addon => addon.StatusInfo?.Status == AddonStatus.Active)
+            .Select(addon => addon.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return new ZenmeterWorkspaceView(
             CustomerName: subscription?.Customer?.Name ?? session.CustomerName,
@@ -36,9 +47,9 @@ internal static class ZenmeterWorkspaceBuilder
             NextRenewalAt: subscription?.StatusInfo?.ExpiryDate,
             CurrentUsagePeriodStart: subscription?.CurrentUsagePeriodStart,
             NextUsageResetAt: subscription?.NextUsageResetAt,
-            Meters: ZenmeterMeterUsageProjector.ProjectMeters(meters, addons, session, dataIssues),
-            UsageFeatures: ZenmeterFeatureProjector.ProjectUsageFeatures(features, featureRates, dataIssues),
-            AccessFeatures: ZenmeterFeatureProjector.ProjectAccessFeatures(features, dataIssues),
+            Meters: ZenmeterMeterUsageProjector.ProjectMeters(meters, addons, balances, dataIssues),
+            UsageFeatures: ZenmeterFeatureProjector.ProjectUsageFeatures(features, featureRates, activeAddonIds, dataIssues),
+            AccessFeatures: ZenmeterFeatureProjector.ProjectAccessFeatures(features, activeAddonIds, dataIssues),
             ActiveAddons: ZenmeterAddonProjector.ProjectActiveAddons(addons, dataIssues),
             TopUpOptions: topUpOptions,
             User: BuildUserView(user, session.User),

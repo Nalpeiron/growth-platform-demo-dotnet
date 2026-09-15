@@ -167,14 +167,10 @@ else if (!_loaded)
         {
             var result = await Demo.ConsumeFeature(_sessionId, featureKey, request.Amount, CancellationToken.None);
             SetActionError(result.Action);
-            if (_view is not null && result.ViewUpdate is not null)
-            {
-                _view = ZenmeterWorkspaceUsageUpdater.Apply(_view, result.ViewUpdate);
-            }
-            else if (result.Succeeded)
-            {
-                await LoadAsync();
-            }
+            _view = await ZenmeterWorkspaceUsageUpdater.ApplyOrReload(
+                _view,
+                result,
+                () => Demo.GetWorkspace(_sessionId, CancellationToken.None));
         }
         finally
         {

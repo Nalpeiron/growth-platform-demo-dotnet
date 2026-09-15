@@ -1,12 +1,15 @@
 using Microsoft.Extensions.Options;
 using NalpeironGrowthPlatformDemo.Configuration;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
+using Zenmeter.Consumption.Client;
+using Zenmeter.Consumption.Client.Models;
 
 namespace NalpeironGrowthPlatformDemo.Application.Zenmeter;
 
 public sealed class ZenmeterWorkspaceQuery(
     IZenmeterPricingCatalog catalog,
     IZenmeterManagementClient zenmeter,
+    IZenmeterConsumptionClient consumptionClient,
     IZenmeterDemoSessionStore store,
     IZenmeterTopUpPolicy topUpPolicy,
     IOptions<NalpeironOptions> nalpeironOptions)
@@ -23,8 +26,8 @@ public sealed class ZenmeterWorkspaceQuery(
 
         var pricingTask = catalog.GetPricingShell(cancellationToken);
         var subscriptionTask = zenmeter.GetSubscription(session.SubscriptionId, cancellationToken);
-        var featuresTask = zenmeter.GetFeatures(session.SubscriptionId, cancellationToken);
-        var metersTask = zenmeter.GetMeters(session.SubscriptionId, cancellationToken);
+        var featuresTask = consumptionClient.GetFeatures(session.SubscriptionId, cancellationToken);
+        var metersTask = consumptionClient.GetMeters(session.SubscriptionId, cancellationToken);
         var usersTask = zenmeter.ListUsers(session.SubscriptionId, cancellationToken);
         var compatibleAddonsTask = catalog.GetCompatibleAddons(
             session.PlanSku,
@@ -60,6 +63,9 @@ public sealed class ZenmeterWorkspaceQuery(
                 candidate.ExternalUserId,
                 session.User.ExternalUserId,
                 StringComparison.OrdinalIgnoreCase));
+        var balance = user is null
+            ? new SubscriptionUserBalance()
+            : await consumptionClient.GetUserBalance(session.SubscriptionId, user.SubscriptionUserId, cancellationToken);
 
         return ZenmeterWorkspaceBuilder.Build(
             session,
@@ -68,6 +74,7 @@ public sealed class ZenmeterWorkspaceQuery(
             subscription,
             features,
             meters,
+            balance.BalanceSnapshots,
             user,
             topUpPolicy.ResolvePurchasableTopUpOptions(new ZenmeterTopUpPolicyContext(
                 compatibleAddons,
