@@ -9,7 +9,7 @@ namespace NalpeironGrowthPlatformDemo.Tests.Nalpeiron.Zenmeter;
 public sealed class ZenmeterManagementClientTests
 {
     [Fact]
-    public async Task CreateSubscription_WithSkus_SendsLineItemsWithQuantityOneToGeneratedClient()
+    public async Task CreateSubscription_WithSkus_SendsLineItemsWithQuantityOneAndAsPaidToGeneratedClient()
     {
         // arrange
         Zm.CreateSubscriptionApiRequest? request = null;
@@ -31,6 +31,7 @@ public sealed class ZenmeterManagementClientTests
 
         // assert
         Assert.NotNull(request);
+        Assert.Equal(Zm.SubscriptionStartMode.Paid, request.StartMode);
         Assert.Equal("cust_123", request.CustomerId);
         Assert.Collection(
             request.LineItems,
