@@ -42,7 +42,6 @@ public sealed class ZenmeterUsageService(
                         operationId,
                         cancellationToken);
 
-                    ZenmeterUsageSnapshotApplier.Apply(session, consumption.Consumption);
                     if (!consumption.Consumed)
                     {
                         var errorMessage =
@@ -52,13 +51,14 @@ public sealed class ZenmeterUsageService(
 
                         return Result(
                             session,
+                            consumption.Consumption,
                             DemoActionResult.Failure(
                                 "consume_rejected",
                                 errorMessage));
                     }
 
                     session.Events.Add($"Consumed {quantity.Units} unit(s) of {featureKey}.");
-                    return Result(session, DemoActionResult.Success());
+                    return Result(session, consumption.Consumption, DemoActionResult.Success());
                 });
 
             return result ?? Failure("session_not_found", "Session not found.");
@@ -80,20 +80,12 @@ public sealed class ZenmeterUsageService(
 
     private static ZenmeterUsageActionResult Result(
         ZenmeterDemoSession session,
+        ConsumedSubscriptionFeature? consumption,
         DemoActionResult action) =>
         new(
             action,
             new ZenmeterUsageViewUpdate(
-                session.MeterUsage.ToDictionary(
-                    pair => pair.Key,
-                    pair => pair.Value,
-                    StringComparer.OrdinalIgnoreCase),
-                session.MeterSourceUsage.ToDictionary(
-                    pair => pair.Key,
-                    pair => (IReadOnlyDictionary<string, ZenmeterMeterSourceUsageSnapshot>)pair.Value.ToDictionary(
-                        inner => inner.Key,
-                        inner => inner.Value,
-                        StringComparer.OrdinalIgnoreCase),
-                    StringComparer.OrdinalIgnoreCase),
+                session.SubscriptionId!,
+                consumption,
                 session.Events.ToList()));
 }

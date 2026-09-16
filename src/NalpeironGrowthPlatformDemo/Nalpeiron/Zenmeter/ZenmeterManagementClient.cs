@@ -27,14 +27,6 @@ public interface IZenmeterManagementClient
         string? subscriptionRefId,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<SubscriptionFeatureListItemModel>> GetFeatures(
-        string subscriptionId,
-        CancellationToken cancellationToken);
-
-    Task<IReadOnlyList<SubscriptionMeterListItemModel>> GetMeters(
-        string subscriptionId,
-        CancellationToken cancellationToken);
-
     Task AddAddons(
         string subscriptionId,
         IReadOnlyList<string> skus,
@@ -99,22 +91,6 @@ public sealed class ZenmeterManagementClient(IZenmeterManagementApiGeneratedClie
         {
             return null;
         }
-    }
-
-    public async Task<IReadOnlyList<SubscriptionFeatureListItemModel>> GetFeatures(
-        string subscriptionId,
-        CancellationToken cancellationToken)
-    {
-        var result = await api.ZenmeterSubscriptions_GetFeaturesAsync(subscriptionId, cancellationToken);
-        return result?.Items?.ToList() ?? [];
-    }
-
-    public async Task<IReadOnlyList<SubscriptionMeterListItemModel>> GetMeters(
-        string subscriptionId,
-        CancellationToken cancellationToken)
-    {
-        var result = await api.ZenmeterSubscriptions_GetMetersAsync(subscriptionId, cancellationToken);
-        return result?.Items?.ToList() ?? [];
     }
 
     public Task AddAddons(

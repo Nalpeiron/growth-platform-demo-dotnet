@@ -1,40 +1,43 @@
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
-using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated;
+using Zenmeter.Consumption.Client.Models;
 
 namespace NalpeironGrowthPlatformDemo.Application.Zenmeter;
 
 internal static class ZenmeterFeatureProjector
 {
     public static IReadOnlyList<ZenmeterUsageFeatureView> ProjectUsageFeatures(
-        IReadOnlyList<SubscriptionFeatureListItemModel> features,
+        IReadOnlyList<Feature> features,
         IReadOnlyDictionary<string, ZenmeterFeatureRatePricing> featureRates,
+        IReadOnlySet<string> activeAddonIds,
         ZenmeterWorkspaceIssueCollector dataIssues)
     {
         return features
             .Where(feature => feature.FeatureKind != FeatureKind.Access)
             .OrderBy(feature => feature.Reference.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(feature => ProjectUsageFeature(feature, featureRates, dataIssues))
+            .Select(feature => ProjectUsageFeature(feature, featureRates, activeAddonIds, dataIssues))
             .Where(feature => feature is not null)
             .Select(feature => feature!)
             .ToList();
     }
 
     public static IReadOnlyList<ZenmeterAccessFeatureView> ProjectAccessFeatures(
-        IReadOnlyList<SubscriptionFeatureListItemModel> features,
+        IReadOnlyList<Feature> features,
+        IReadOnlySet<string> activeAddonIds,
         ZenmeterWorkspaceIssueCollector dataIssues)
     {
         return features
             .Where(feature => feature.FeatureKind == FeatureKind.Access)
             .OrderBy(feature => feature.Reference.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(feature => ProjectAccessFeature(feature, dataIssues))
+            .Select(feature => ProjectAccessFeature(feature, activeAddonIds, dataIssues))
             .Where(feature => feature is not null)
             .Select(feature => feature!)
             .ToList();
     }
 
     private static ZenmeterUsageFeatureView? ProjectUsageFeature(
-        SubscriptionFeatureListItemModel feature,
+        Feature feature,
         IReadOnlyDictionary<string, ZenmeterFeatureRatePricing> featureRates,
+        IReadOnlySet<string> activeAddonIds,
         ZenmeterWorkspaceIssueCollector dataIssues)
     {
         if (string.IsNullOrWhiteSpace(feature.Reference.Key))
@@ -71,11 +74,12 @@ internal static class ZenmeterFeatureProjector
             rate?.ConversionRate,
             rate?.MeterUnitName ?? string.Empty,
             rate?.MeterUnitPluralName ?? string.Empty,
-            IsFeatureEnabled(feature));
+            IsFeatureEnabled(feature, activeAddonIds, dataIssues));
     }
 
     private static ZenmeterAccessFeatureView? ProjectAccessFeature(
-        SubscriptionFeatureListItemModel feature,
+        Feature feature,
+        IReadOnlySet<string> activeAddonIds,
         ZenmeterWorkspaceIssueCollector dataIssues)
     {
         if (string.IsNullOrWhiteSpace(feature.Reference.Key))
@@ -93,17 +97,34 @@ internal static class ZenmeterFeatureProjector
         return new ZenmeterAccessFeatureView(
             feature.Reference.Key,
             feature.Reference.DisplayName,
-            IsFeatureEnabled(feature));
+            IsFeatureEnabled(feature, activeAddonIds, dataIssues));
     }
 
-    private static bool IsFeatureEnabled(SubscriptionFeatureListItemModel feature)
+    private static bool IsFeatureEnabled(
+        Feature feature,
+        IReadOnlySet<string> activeAddonIds,
+        ZenmeterWorkspaceIssueCollector dataIssues)
     {
-        var sources = feature.Sources;
-        if (sources is { Count: > 0 })
+        var enabled = false;
+        foreach (var source in feature.Sources)
         {
-            return sources.Any(source => source.Access == Access.Enabled);
+            switch (source.SourceKind)
+            {
+                case SubscriptionGrantSourceKind.BaseOffering:
+                    enabled |= source.Access == Access.Enabled;
+                    break;
+                case SubscriptionGrantSourceKind.Addon when !string.IsNullOrWhiteSpace(source.SubscriptionAddonId):
+                    enabled |= source.Access == Access.Enabled && activeAddonIds.Contains(source.SubscriptionAddonId);
+                    break;
+                case SubscriptionGrantSourceKind.Addon:
+                    dataIssues.Add($"Zenmeter feature {feature.Reference.Key} has an add-on source without a purchase ID. Access could not be verified.");
+                    break;
+                default:
+                    dataIssues.Add($"Zenmeter feature {feature.Reference.Key} has an unsupported grant source kind ({source.SourceKind}). Access could not be verified.");
+                    break;
+            }
         }
 
-        return false;
+        return enabled;
     }
 }

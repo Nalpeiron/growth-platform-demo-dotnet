@@ -48,7 +48,7 @@ per-product slices**.
   - `Zenmeter/` - `ZenmeterDemoFacade` orchestration facade, purchase/billing/usage/top-up
     services, `ZenmeterDemoModels` view models, `Zenmeter*Projector` (API DTO -> workspace read
     model), `Zenmeter*Policy` (plan/add-on/top-up rules), `ZenmeterWorkspaceBuilder`,
-    `ZenmeterUsageSnapshotApplier`.
+    `ZenmeterWorkspaceUsageUpdater`.
 - `Components/` - Blazor UI:
   - `Pages/Products` (`/`)
   - `Pages/Zentitle` (`/elevate/{default|fastspring|stripe}`, provider checkout, billing return,

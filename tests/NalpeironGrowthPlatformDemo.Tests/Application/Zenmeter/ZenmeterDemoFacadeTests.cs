@@ -25,6 +25,283 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zenmeter;
 public sealed class ZenmeterDemoFacadeTests
 {
     [Fact]
+    public async Task GetWorkspace_WhenSubscriptionDetailsAreMissing_ReportsUnverifiedAddonAccess()
+    {
+        // arrange
+        var zenmeter = new StubZenmeterManagementClient { Subscription = SubscriptionWithAddonAccessFeatures("sub-1") };
+        var consumption = new StubZenmeterConsumptionClient { Features = AddonAccessFeatures() };
+        var service = CreateService(zenmeter, out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "missing-subscription", CancellationToken.None);
+        zenmeter.Subscription = null;
+
+        // act
+        var workspace = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        Assert.Contains("Subscription details are unavailable. Add-on access grants could not be verified.", workspace!.DataIssues);
+        Assert.False(Assert.Single(workspace.AccessFeatures, feature => feature.Key == "sso").Enabled);
+        Assert.True(Assert.Single(workspace.AccessFeatures, feature => feature.Key == "team-workspace").Enabled);
+    }
+
+    [Theory]
+    [InlineData(SubscriptionGrantSourceKind.Addon, "without a purchase ID")]
+    [InlineData((SubscriptionGrantSourceKind)123, "unsupported grant source kind")]
+    public async Task GetWorkspace_WithUnverifiableGrantSource_ReportsDataIssue(
+        SubscriptionGrantSourceKind kind, string expectedIssue)
+    {
+        // arrange
+        var consumption = new StubZenmeterConsumptionClient
+        {
+            Features = [AccessFeature("sso", "SSO", [Source(kind, null, Access.Enabled)])]
+        };
+        var service = CreateService(new StubZenmeterManagementClient { Subscription = Subscription("sub-1") },
+            out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "invalid-grant", CancellationToken.None);
+
+        // act
+        var workspace = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        Assert.Contains(workspace!.DataIssues, issue => issue.Contains(expectedIssue, StringComparison.Ordinal));
+        Assert.False(Assert.Single(workspace.AccessFeatures).Enabled);
+    }
+
+    [Fact]
+    public async Task ConsumeFeature_WhenWorkspaceBelongsToAnotherSubscription_DoesNotApplyItsUpdate()
+    {
+        // arrange
+        var consumption = new StubZenmeterConsumptionClient
+        {
+            Result = Consumed("ai-campaign-draft", 1, 1,
+                MeterBalanceSnapshot("credits", [Bucket(BucketType.Shared, 50, 50, 100)]))
+        };
+        var service = CreateService(new StubZenmeterManagementClient { Subscription = Subscription("sub-1") },
+            out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "different-subscription", CancellationToken.None);
+        var initial = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+        var otherWorkspace = initial! with { Refs = new ZenmeterProvisioningRefs("customer-1", "sub-2") };
+
+        // act
+        var result = await service.ConsumeFeature(purchase.SessionId!, "ai-campaign-draft", 1, CancellationToken.None);
+        var updated = (await ZenmeterWorkspaceUsageUpdater.ApplyOrReload(
+            otherWorkspace, result, () => throw new InvalidOperationException("This update must not reload the workspace.")))!;
+
+        // assert
+        Assert.Equal("sub-1", result.ViewUpdate!.SubscriptionId);
+        Assert.Same(otherWorkspace, updated);
+    }
+
+    [Fact]
+    public async Task ConsumeFeature_WithFeatureOwnerSharingAMeterKey_DoesNotOverwriteMeterBalance()
+    {
+        // arrange
+        var featureBalance = MeterBalanceSnapshot("credits", [Bucket(BucketType.Shared, 500, 0, 500)]) with
+        {
+            BalanceOwner = new BalanceOwnerReference { Kind = BalanceOwnerKind.Feature, Key = "credits" }
+        };
+        var consumption = new StubZenmeterConsumptionClient
+        {
+            Balance = new SubscriptionUserBalance
+            {
+                BalanceSnapshots = [MeterBalanceSnapshot("credits", [Bucket(BucketType.Shared, 10, 90, 100)])]
+            },
+            Result = Consumed("credits", 1, 1, featureBalance)
+        };
+        var service = CreateService(new StubZenmeterManagementClient { Subscription = Subscription("sub-1") },
+            out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "owner-kind", CancellationToken.None);
+        var initial = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // act
+        var result = await service.ConsumeFeature(purchase.SessionId!, "credits", 1, CancellationToken.None);
+        var updated = (await ZenmeterWorkspaceUsageUpdater.ApplyOrReload(
+            initial!, result, () => throw new InvalidOperationException("This update must not reload the workspace.")))!;
+        var refreshed = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        Assert.Same(featureBalance, result.ViewUpdate!.Consumption!.BalanceSnapshot);
+        Assert.Equal(90, Assert.Single(updated.Meters).Available);
+        Assert.Equal(90, Assert.Single(refreshed!.Meters).Available);
+    }
+
+    [Theory]
+    [InlineData(true, 90, "base")]
+    [InlineData(false, 4, "base:user")]
+    public async Task GetWorkspace_WithUserScopedBalance_DoesNotAddUserLimitsToSharedCapacity(
+        bool includeShared, int expectedAvailable, string expectedSourceKey)
+    {
+        // arrange
+        var buckets = new List<BalanceBucket> { Bucket(BucketType.User, 6, 4, 10) };
+        if (includeShared)
+        {
+            buckets.Add(Bucket(BucketType.Shared, 10, 90, 100));
+        }
+
+        var consumption = new StubZenmeterConsumptionClient
+        {
+            Balance = new SubscriptionUserBalance { BalanceSnapshots = [MeterBalanceSnapshot("credits", buckets)] }
+        };
+        var service = CreateService(new StubZenmeterManagementClient { Subscription = Subscription("sub-1") },
+            out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "scoped-balance", CancellationToken.None);
+
+        // act
+        var workspace = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        var meter = Assert.Single(workspace!.Meters);
+        Assert.Equal(expectedAvailable, meter.Available);
+        Assert.Equal(expectedSourceKey, Assert.Single(meter.Sources).Key);
+    }
+
+    [Fact]
+    public async Task ConsumeFeature_WithEmptyBalanceSnapshot_ClearsPreviousUsageAndSources()
+    {
+        // arrange
+        var consumption = new StubZenmeterConsumptionClient
+        {
+            Balance = new SubscriptionUserBalance
+            {
+                BalanceSnapshots = [MeterBalanceSnapshot("credits", [Bucket(BucketType.Shared, 10, 90, 100)])]
+            },
+            Result = Consumed("ai-campaign-draft", 1, 1, MeterBalanceSnapshot("credits", []))
+        };
+        var service = CreateService(new StubZenmeterManagementClient { Subscription = Subscription("sub-1") },
+            out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "empty-balance", CancellationToken.None);
+        var initial = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // act
+        var result = await service.ConsumeFeature(purchase.SessionId!, "ai-campaign-draft", 1, CancellationToken.None);
+        var updated = (await ZenmeterWorkspaceUsageUpdater.ApplyOrReload(
+            initial!, result, () => throw new InvalidOperationException("This update must not reload the workspace.")))!;
+
+        // assert
+        var meter = Assert.Single(updated.Meters);
+        Assert.Equal(0, meter.Used);
+        Assert.Equal(0, meter.Available);
+        Assert.Equal(0, meter.Limit);
+        Assert.Empty(meter.Sources);
+    }
+
+    [Fact]
+    public async Task GetWorkspace_WhenServerBalanceChanges_RefreshesSdkBalanceWithoutConsumption()
+    {
+        // arrange
+        var consumption = new StubZenmeterConsumptionClient
+        {
+            Balance = new SubscriptionUserBalance
+            {
+                BalanceSnapshots = [MeterBalanceSnapshot("credits", [Bucket(BucketType.Shared, 10, 90, 100)])]
+            }
+        };
+        var service = CreateService(new StubZenmeterManagementClient { Subscription = Subscription("sub-1") },
+            out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "refresh-balance", CancellationToken.None);
+        var initial = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+        consumption.Balance = new SubscriptionUserBalance
+        {
+            BalanceSnapshots = [MeterBalanceSnapshot("credits", [Bucket(BucketType.Shared, 75.5m, 124.5m, 200)])]
+        };
+
+        // act
+        var refreshed = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        Assert.Equal(90, Assert.Single(initial!.Meters).Available);
+        var meter = Assert.Single(refreshed!.Meters);
+        Assert.Equal(75.5m, meter.Used);
+        Assert.Equal(124.5m, meter.Available);
+        Assert.Equal(200, meter.Limit);
+        Assert.Equal(2, consumption.GetBalanceCalls);
+        Assert.Equal(2, consumption.GetFeaturesCalls);
+        Assert.Equal(2, consumption.GetMetersCalls);
+        Assert.Equal("sub-1", consumption.BalanceSubscriptionId);
+        Assert.Equal("zmsu-demo-user", consumption.BalanceUserId);
+        Assert.Equal(0, consumption.ConsumeCalls);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ConsumeFeature_WithEffectiveBalance_PreservesNumbersForSuccessAndRejection(bool consumed)
+    {
+        // arrange
+        var consumption = new StubZenmeterConsumptionClient
+        {
+            Result = new ConsumptionResult
+            {
+                Consumed = consumed,
+                Consumption = Snapshot("ai-campaign-draft", 1, 12,
+                    MeterBalanceSnapshot("credits", [Bucket(BucketType.Shared, 150000.25m, 7.5m, 200000)])),
+                ConsumptionError = consumed ? null : new ZenmeterApiError { Details = "Insufficient balance" }
+            }
+        };
+        var service = CreateService(new StubZenmeterManagementClient { Subscription = Subscription("sub-1") },
+            out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "effective-balance", CancellationToken.None);
+        var initial = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // act
+        var result = await service.ConsumeFeature(purchase.SessionId!, "ai-campaign-draft", 1, CancellationToken.None);
+        var updated = (await ZenmeterWorkspaceUsageUpdater.ApplyOrReload(
+            initial!, result, () => throw new InvalidOperationException("This update must not reload the workspace.")))!;
+        var refreshed = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        Assert.Equal(consumed, result.Succeeded);
+        foreach (var workspace in new[] { updated, refreshed! })
+        {
+            var meter = Assert.Single(workspace.Meters);
+            Assert.Equal(150000.25m, meter.Used);
+            Assert.Equal(7.5m, meter.Available);
+            Assert.Equal(200000, meter.Limit);
+            var source = Assert.Single(meter.Sources);
+            Assert.Equal(meter.Used, source.Used);
+            Assert.Equal(meter.Available, source.Available);
+            Assert.Equal(meter.Limit, source.Limit);
+        }
+    }
+
+    [Fact]
+    public async Task GetWorkspace_WhenBalanceReadFails_DoesNotSubstituteConfigurationAllowances()
+    {
+        // arrange
+        var consumption = new StubZenmeterConsumptionClient { BalanceException = new HttpRequestException("Balance unavailable") };
+        var service = CreateService(new StubZenmeterManagementClient { Subscription = Subscription("sub-1") },
+            out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "failed-balance", CancellationToken.None);
+
+        // act
+        var act = () => service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        await Assert.ThrowsAsync<HttpRequestException>(act);
+    }
+
+    [Theory]
+    [InlineData(Zm.AddonStatus.Incompatible)]
+    [InlineData(Zm.AddonStatus.Expired)]
+    public async Task GetWorkspace_WithInactiveAddonConfiguration_DoesNotEnableItsAccessFeatures(Zm.AddonStatus status)
+    {
+        // arrange
+        var subscription = SubscriptionWithAddonAccessFeatures("sub-1");
+        Assert.Single(subscription.Addons).StatusInfo.Status = status;
+        var zenmeter = new StubZenmeterManagementClient { Subscription = subscription };
+        var consumption = new StubZenmeterConsumptionClient { Features = AddonAccessFeatures() };
+        var service = CreateService(zenmeter, out _, consumptionClient: consumption);
+        var purchase = await service.Purchase("elevate-saas-scale-monthly", null, "Acme", "inactive-access", CancellationToken.None);
+
+        // act
+        var workspace = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        Assert.False(Assert.Single(workspace!.AccessFeatures, feature => feature.Key == "sso").Enabled);
+        Assert.False(Assert.Single(workspace.AccessFeatures, feature => feature.Key == "audit-logs").Enabled);
+        Assert.True(Assert.Single(workspace.AccessFeatures, feature => feature.Key == "team-workspace").Enabled);
+    }
+
+    [Fact]
     public async Task Purchase_WithStripe_StoresCheckoutSessionForProvisioningResume()
     {
         // arrange
@@ -101,7 +378,7 @@ public sealed class ZenmeterDemoFacadeTests
             CancellationToken.None);
         var initialWorkspace = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
         var listUsersCallsBeforeConsume = zenmeter.ListUsersCalls;
-        var getMetersCallsBeforeConsume = zenmeter.GetMetersCalls;
+        var getMetersCallsBeforeConsume = consumption.GetMetersCalls;
 
         // act
         var result = await service.ConsumeFeature(purchase.SessionId!, "ai-campaign-draft", 2, CancellationToken.None);
@@ -112,10 +389,11 @@ public sealed class ZenmeterDemoFacadeTests
         Assert.NotNull(result.ViewUpdate);
         Assert.Equal(1, consumption.ConsumeCalls);
         Assert.Equal(listUsersCallsBeforeConsume, zenmeter.ListUsersCalls);
-        Assert.Equal(getMetersCallsBeforeConsume, zenmeter.GetMetersCalls);
+        Assert.Equal(getMetersCallsBeforeConsume, consumption.GetMetersCalls);
         var workspace = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
         var credits = Assert.Single(workspace!.Meters);
-        var updatedWorkspace = ZenmeterWorkspaceUsageUpdater.Apply(initialWorkspace!, result.ViewUpdate!);
+        var updatedWorkspace = (await ZenmeterWorkspaceUsageUpdater.ApplyOrReload(
+            initialWorkspace!, result, () => throw new InvalidOperationException("This update must not reload the workspace.")))!;
         var updatedCredits = Assert.Single(updatedWorkspace.Meters);
         Assert.Equal(credits.Limit, updatedCredits.Limit);
         Assert.Equal(credits.Used, updatedCredits.Used);
@@ -140,11 +418,11 @@ public sealed class ZenmeterDemoFacadeTests
         // arrange
         var zenmeter = new StubZenmeterManagementClient
         {
-            Subscription = SubscriptionWithAddonMeterGrant("sub-1"),
-            Meters = AddonMeterGrantMeters()
+            Subscription = SubscriptionWithAddonMeterGrant("sub-1")
         };
         var consumption = new StubZenmeterConsumptionClient
         {
+            Meters = AddonMeterGrantMeters(),
             Result = Consumed(
                 "ai-campaign-draft",
                 1,
@@ -185,17 +463,25 @@ public sealed class ZenmeterDemoFacadeTests
             source is { Label: "100k credits / month add-on", TermLabel: "Recurring, Monthly", Limit: 50000, Used: 23455.25m, Available: 26544.75m, HasUsage: true });
     }
 
-    [Fact]
-    public async Task ConsumeFeature_WithAddonUsageBucket_MapsItToTheMatchingSource()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConsumeFeature_WithAddonUsageBucket_MapsItToTheMatchingPurchase(bool sameSku)
     {
         // arrange
+        var subscription = SubscriptionWithTwoAddonMeterGrants("sub-1");
+        if (sameSku)
+        {
+            subscription.Addons.Last().Sku = subscription.Addons.First().Sku;
+        }
+
         var zenmeter = new StubZenmeterManagementClient
         {
-            Subscription = SubscriptionWithTwoAddonMeterGrants("sub-1"),
-            Meters = TwoAddonMeterGrantMeters()
+            Subscription = subscription
         };
         var consumption = new StubZenmeterConsumptionClient
         {
+            Meters = TwoAddonMeterGrantMeters(),
             Result = Consumed(
                 "ai-campaign-draft",
                 1,
@@ -244,16 +530,16 @@ public sealed class ZenmeterDemoFacadeTests
 
     [Fact]
     public async Task
-        ConsumeFeature_keeps_meter_grant_limit_when_consumption_snapshot_only_contains_depleted_base_bucket()
+        ConsumeFeature_WhenAddonHasNoBalanceBucket_DoesNotReconstructItsBalanceFromGrants()
     {
         // arrange
         var zenmeter = new StubZenmeterManagementClient
         {
-            Subscription = SubscriptionWithAddonMeterGrant("sub-1"),
-            Meters = AddonMeterGrantMeters()
+            Subscription = SubscriptionWithAddonMeterGrant("sub-1")
         };
         var consumption = new StubZenmeterConsumptionClient
         {
+            Meters = AddonMeterGrantMeters(),
             Result = Consumed(
                 "ai-campaign-draft",
                 1,
@@ -278,12 +564,11 @@ public sealed class ZenmeterDemoFacadeTests
         Assert.True(result.Succeeded);
         var credits = Assert.Single(workspace!.Meters);
         Assert.Equal(25000, credits.Used);
-        Assert.Equal(50000, credits.Available);
-        Assert.Equal(75000, credits.Limit);
+        Assert.Equal(0, credits.Available);
+        Assert.Equal(25000, credits.Limit);
         Assert.Contains(credits.Sources, source =>
             source is { Key: "base", Used: 25000, Available: 0, HasUsage: true });
-        Assert.Contains(credits.Sources, source =>
-            source is { Key: "addon:zm-sub-addon-1", Used: 0, Available: 50000, HasUsage: false });
+        Assert.Single(credits.Sources);
     }
 
     [Fact]
@@ -301,11 +586,11 @@ public sealed class ZenmeterDemoFacadeTests
             ]));
         var zenmeter = new StubZenmeterManagementClient
         {
-            Subscription = SubscriptionWithAddonMeterGrant("sub-1"),
-            Meters = AddonMeterGrantMeters(baseGrant: 500, addonGrant: 500)
+            Subscription = SubscriptionWithAddonMeterGrant("sub-1")
         };
         var consumption = new StubZenmeterConsumptionClient
         {
+            Meters = AddonMeterGrantMeters(baseGrant: 500, addonGrant: 500),
             Result = new ConsumptionResult
             {
                 Consumed = false,
@@ -409,10 +694,10 @@ public sealed class ZenmeterDemoFacadeTests
         // arrange
         var zenmeter = new StubZenmeterManagementClient
         {
-            Subscription = Subscription("sub-1"),
-            Features = AccessFeatures()
+            Subscription = Subscription("sub-1")
         };
-        var service = CreateService(zenmeter, out _);
+        var consumption = new StubZenmeterConsumptionClient { Features = AccessFeatures() };
+        var service = CreateService(zenmeter, out _, consumptionClient: consumption);
 
         // act
         var purchase = await service.Purchase(
@@ -435,10 +720,10 @@ public sealed class ZenmeterDemoFacadeTests
         // arrange
         var zenmeter = new StubZenmeterManagementClient
         {
-            Subscription = SubscriptionWithAddonAccessFeatures("sub-1"),
-            Features = AddonAccessFeatures()
+            Subscription = SubscriptionWithAddonAccessFeatures("sub-1")
         };
-        var service = CreateService(zenmeter, out _);
+        var consumption = new StubZenmeterConsumptionClient { Features = AddonAccessFeatures() };
+        var service = CreateService(zenmeter, out _, consumptionClient: consumption);
 
         // act
         var purchase = await service.Purchase(
@@ -1817,8 +2102,11 @@ public sealed class ZenmeterDemoFacadeTests
             billingStatus,
             checkoutService,
             NullLogger<ZenmeterPurchaseService>.Instance);
+        consumptionClient ??= new StubZenmeterConsumptionClient();
+        consumptionClient.Features ??= DefaultFeatures();
+        consumptionClient.Meters ??= DefaultMeters();
         var usage = new ZenmeterUsageService(
-            consumptionClient ?? new StubZenmeterConsumptionClient(),
+            consumptionClient,
             store,
             NullLogger<ZenmeterUsageService>.Instance);
         var topUpStarter = new BillingCheckoutTopUpStarter(checkoutService);
@@ -1840,6 +2128,7 @@ public sealed class ZenmeterDemoFacadeTests
         var workspace = new ZenmeterWorkspaceQuery(
             catalog,
             zenmeter,
+            consumptionClient,
             store,
             topUpPolicy,
             Options.Create(new NalpeironOptions { WebUrl = webUrl }));
@@ -1915,16 +2204,16 @@ public sealed class ZenmeterDemoFacadeTests
             NextUsageResetAt = DateTimeOffset.Parse("2026-07-01T00:00:00Z")
         };
 
-    private static IReadOnlyList<Zm.SubscriptionFeatureListItemModel> DefaultFeatures() =>
+    private static IReadOnlyList<Feature> DefaultFeatures() =>
     [
         UsageFeature("ai-campaign-draft", "AI campaign draft", "draft", "drafts", "credits")
     ];
 
-    private static IReadOnlyList<Zm.SubscriptionMeterListItemModel> DefaultMeters() =>
+    private static IReadOnlyList<Meter> DefaultMeters() =>
     [
         Meter("credits", "Credits", "credit", "credits",
         [
-            MeterSource(Zm.GrantSourceKind.BaseOffering, null, 100000)
+            MeterSource(SubscriptionGrantSourceKind.BaseOffering, null, 100000)
         ])
     ];
 
@@ -1984,58 +2273,58 @@ public sealed class ZenmeterDemoFacadeTests
             SubscriptionAddonId = subscriptionAddonId
         };
 
-    private static IReadOnlyList<Zm.SubscriptionMeterListItemModel> AddonMeterGrantMeters(
+    private static IReadOnlyList<Meter> AddonMeterGrantMeters(
         long baseGrant = 25000,
         long addonGrant = 50000) =>
     [
         Meter("credits", "Credits", "credit", "credits",
         [
-            MeterSource(Zm.GrantSourceKind.BaseOffering, null, baseGrant),
-            MeterSource(Zm.GrantSourceKind.Addon, "zm-sub-addon-1", addonGrant)
+            MeterSource(SubscriptionGrantSourceKind.BaseOffering, null, baseGrant),
+            MeterSource(SubscriptionGrantSourceKind.Addon, "zm-sub-addon-1", addonGrant)
         ])
     ];
 
-    private static IReadOnlyList<Zm.SubscriptionMeterListItemModel> TwoAddonMeterGrantMeters() =>
+    private static IReadOnlyList<Meter> TwoAddonMeterGrantMeters() =>
     [
         Meter("credits", "Credits", "credit", "credits",
         [
-            MeterSource(Zm.GrantSourceKind.BaseOffering, null, 500),
-            MeterSource(Zm.GrantSourceKind.Addon, "zm-sub-addon-recurring", 500),
-            MeterSource(Zm.GrantSourceKind.Addon, "zm-sub-addon-topup", 500)
+            MeterSource(SubscriptionGrantSourceKind.BaseOffering, null, 500),
+            MeterSource(SubscriptionGrantSourceKind.Addon, "zm-sub-addon-recurring", 500),
+            MeterSource(SubscriptionGrantSourceKind.Addon, "zm-sub-addon-topup", 500)
         ])
     ];
 
-    private static IReadOnlyList<Zm.SubscriptionFeatureListItemModel> AccessFeatures() =>
+    private static IReadOnlyList<Feature> AccessFeatures() =>
     [
         UsageFeature("ai-campaign-draft", "AI campaign draft", "draft", "drafts", "credits"),
         AccessFeature("team-workspace", "Team workspace",
-            [Source(Zm.GrantSourceKind.BaseOffering, null, Zm.Access.Enabled)]),
+            [Source(SubscriptionGrantSourceKind.BaseOffering, null, Access.Enabled)]),
         AccessFeature("sso", "SSO",
-            [Source(Zm.GrantSourceKind.BaseOffering, null, Zm.Access.Disabled)])
+            [Source(SubscriptionGrantSourceKind.BaseOffering, null, Access.Disabled)])
     ];
 
-    private static IReadOnlyList<Zm.SubscriptionFeatureListItemModel> AddonAccessFeatures() =>
+    private static IReadOnlyList<Feature> AddonAccessFeatures() =>
     [
         UsageFeature("ai-campaign-draft", "AI campaign draft", "draft", "drafts", "credits"),
         AccessFeature("team-workspace", "Team workspace",
-            [Source(Zm.GrantSourceKind.BaseOffering, null, Zm.Access.Enabled)]),
+            [Source(SubscriptionGrantSourceKind.BaseOffering, null, Access.Enabled)]),
         AccessFeature(
             "audit-logs",
             "Audit logs",
             [
-                Source(Zm.GrantSourceKind.BaseOffering, null, Zm.Access.Disabled),
-                Source(Zm.GrantSourceKind.Addon, "zm-sub-addon-security", Zm.Access.Enabled)
+                Source(SubscriptionGrantSourceKind.BaseOffering, null, Access.Disabled),
+                Source(SubscriptionGrantSourceKind.Addon, "zm-sub-addon-security", Access.Enabled)
             ]),
         AccessFeature(
             "sso",
             "SSO",
             [
-                Source(Zm.GrantSourceKind.BaseOffering, null, Zm.Access.Disabled),
-                Source(Zm.GrantSourceKind.Addon, "zm-sub-addon-security", Zm.Access.Enabled)
+                Source(SubscriptionGrantSourceKind.BaseOffering, null, Access.Disabled),
+                Source(SubscriptionGrantSourceKind.Addon, "zm-sub-addon-security", Access.Enabled)
             ])
     ];
 
-    private static Zm.SubscriptionFeatureListItemModel UsageFeature(
+    private static Feature UsageFeature(
         string key,
         string displayName,
         string unitName,
@@ -2043,40 +2332,40 @@ public sealed class ZenmeterDemoFacadeTests
         string meterKey) =>
         new()
         {
-            Reference = new Zm.FeatureReferenceModel
+            Reference = new FeatureReference
             {
                 Key = key,
                 DisplayName = displayName
             },
-            Unit = new Zm.UnitModel
+            Unit = new Unit
             {
                 Name = unitName,
                 PluralName = unitPluralName
             },
-            FeatureKind = Zm.FeatureKind.Quantitative,
+            FeatureKind = FeatureKind.Quantitative,
             MeterKey = meterKey,
-            Sources = [Source(Zm.GrantSourceKind.BaseOffering, null, Zm.Access.Enabled)]
+            Sources = [Source(SubscriptionGrantSourceKind.BaseOffering, null, Access.Enabled)]
         };
 
-    private static Zm.SubscriptionFeatureListItemModel AccessFeature(
+    private static Feature AccessFeature(
         string key,
         string displayName,
-        IReadOnlyList<Zm.FeatureGrantSourceModel> sources) =>
+        IReadOnlyList<FeatureGrantSource> sources) =>
         new()
         {
-            Reference = new Zm.FeatureReferenceModel
+            Reference = new FeatureReference
             {
                 Key = key,
                 DisplayName = displayName
             },
-            FeatureKind = Zm.FeatureKind.Access,
+            FeatureKind = FeatureKind.Access,
             Sources = sources.ToList()
         };
 
-    private static Zm.FeatureGrantSourceModel Source(
-        Zm.GrantSourceKind sourceKind,
+    private static FeatureGrantSource Source(
+        SubscriptionGrantSourceKind sourceKind,
         string? subscriptionAddonId,
-        Zm.Access access) =>
+        Access access) =>
         new()
         {
             SourceKind = sourceKind,
@@ -2084,34 +2373,34 @@ public sealed class ZenmeterDemoFacadeTests
             Access = access
         };
 
-    private static Zm.MeterGrantSourceModel MeterSource(
-        Zm.GrantSourceKind sourceKind,
+    private static MeterGrantSource MeterSource(
+        SubscriptionGrantSourceKind sourceKind,
         string? subscriptionAddonId,
         long includedAmount) =>
         new()
         {
             SourceKind = sourceKind,
             SubscriptionAddonId = subscriptionAddonId,
-            UsageGrants = new Zm.ScopedUsageGrantsModel
+            UsageGrants = new ScopedUsageGrants
             {
-                Shared = new Zm.UsageGrantModel { IncludedAmount = includedAmount }
+                Shared = new UsageGrant { IncludedAmount = includedAmount }
             }
         };
 
-    private static Zm.SubscriptionMeterListItemModel Meter(
+    private static Meter Meter(
         string key,
         string displayName,
         string unitName,
         string unitPluralName,
-        IReadOnlyList<Zm.MeterGrantSourceModel> sources) =>
+        IReadOnlyList<MeterGrantSource> sources) =>
         new()
         {
-            Reference = new Zm.MeterReferenceModel
+            Reference = new MeterReference
             {
                 Key = key,
                 DisplayName = displayName
             },
-            Unit = new Zm.UnitModel
+            Unit = new Unit
             {
                 Name = unitName,
                 PluralName = unitPluralName
@@ -2370,8 +2659,6 @@ public sealed class ZenmeterDemoFacadeTests
     private sealed class StubZenmeterManagementClient : IZenmeterManagementClient
     {
         public Zm.SubscriptionModel? Subscription { get; set; }
-        public IReadOnlyList<Zm.SubscriptionFeatureListItemModel>? Features { get; init; }
-        public IReadOnlyList<Zm.SubscriptionMeterListItemModel>? Meters { get; init; }
         public Exception? CreateUserException { get; init; }
         public TimeSpan AddAddonDelay { get; init; }
         public Queue<IReadOnlyList<Zm.SubscriptionUserModel>> QueuedUserLists { get; } = new();
@@ -2385,7 +2672,6 @@ public sealed class ZenmeterDemoFacadeTests
         public int CreateUserCalls { get; private set; }
         public int ListUsersCalls { get; private set; }
         public int GetSubscriptionCalls { get; private set; }
-        public int GetMetersCalls { get; private set; }
         public string? AddedAddonSubscriptionId { get; private set; }
         public IReadOnlyList<string>? AddedAddonSkus { get; private set; }
         private readonly List<Zm.SubscriptionUserModel> _users = [];
@@ -2427,19 +2713,6 @@ public sealed class ZenmeterDemoFacadeTests
             LookupOrderRefId = orderRefId;
             LookupSubscriptionRefId = subscriptionRefId;
             return Task.FromResult(Subscription);
-        }
-
-        public Task<IReadOnlyList<Zm.SubscriptionFeatureListItemModel>> GetFeatures(
-            string subscriptionId,
-            CancellationToken cancellationToken) =>
-            Task.FromResult(Features ?? DefaultFeatures());
-
-        public Task<IReadOnlyList<Zm.SubscriptionMeterListItemModel>> GetMeters(
-            string subscriptionId,
-            CancellationToken cancellationToken)
-        {
-            GetMetersCalls++;
-            return Task.FromResult(Meters ?? DefaultMeters());
         }
 
         public async Task AddAddons(

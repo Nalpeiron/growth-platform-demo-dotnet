@@ -1,10 +1,19 @@
 using Zenmeter.Consumption.Client;
 using Zenmeter.Consumption.Client.Models;
 
-namespace NalpeironGrowthPlatformDemo.Tests;
+namespace NalpeironGrowthPlatformDemo.Tests.TestHelpers;
 
 internal sealed class StubZenmeterConsumptionClient : IZenmeterConsumptionClient
 {
+    public IReadOnlyList<Feature>? Features { get; set; }
+    public IReadOnlyList<Meter>? Meters { get; set; }
+    public SubscriptionUserBalance Balance { get; set; } = new();
+    public int GetFeaturesCalls { get; private set; }
+    public int GetMetersCalls { get; private set; }
+    public int GetBalanceCalls { get; private set; }
+    public string? BalanceSubscriptionId { get; private set; }
+    public string? BalanceUserId { get; private set; }
+    public Exception? BalanceException { get; set; }
     public ConsumptionResult Result { get; init; } =
         new()
         {
@@ -32,13 +41,19 @@ internal sealed class StubZenmeterConsumptionClient : IZenmeterConsumptionClient
 
     public Task<IReadOnlyList<Feature>> GetFeatures(
         string subscriptionId,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Feature>>([]);
+        CancellationToken cancellationToken = default)
+    {
+        GetFeaturesCalls++;
+        return Task.FromResult(Features ?? []);
+    }
 
     public Task<IReadOnlyList<Meter>> GetMeters(
         string subscriptionId,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Meter>>([]);
+        CancellationToken cancellationToken = default)
+    {
+        GetMetersCalls++;
+        return Task.FromResult(Meters ?? []);
+    }
 
     public Task<SubscriptionUser> GetUserByRefId(
         string subscriptionId,
@@ -54,8 +69,18 @@ internal sealed class StubZenmeterConsumptionClient : IZenmeterConsumptionClient
     public Task<SubscriptionUserBalance> GetUserBalance(
         string subscriptionId,
         string subscriptionUserId,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult(new SubscriptionUserBalance());
+        CancellationToken cancellationToken = default)
+    {
+        GetBalanceCalls++;
+        BalanceSubscriptionId = subscriptionId;
+        BalanceUserId = subscriptionUserId;
+        if (BalanceException is not null)
+        {
+            throw BalanceException;
+        }
+
+        return Task.FromResult(Balance);
+    }
 
     public Task<ConsumptionResult> ConsumeFeature(
         string subscriptionId,
@@ -75,6 +100,17 @@ internal sealed class StubZenmeterConsumptionClient : IZenmeterConsumptionClient
         if (ConsumeException is not null)
         {
             throw ConsumeException;
+        }
+
+        if (Result.Consumption?.BalanceSnapshot is { } snapshot)
+        {
+            Balance = new SubscriptionUserBalance
+            {
+                BalanceSnapshots = Balance.BalanceSnapshots
+                    .Where(existing => existing.BalanceOwner.Kind != snapshot.BalanceOwner.Kind
+                        || existing.BalanceOwner.Key != snapshot.BalanceOwner.Key)
+                    .Append(snapshot).ToList()
+            };
         }
 
         return Task.FromResult(Result);
