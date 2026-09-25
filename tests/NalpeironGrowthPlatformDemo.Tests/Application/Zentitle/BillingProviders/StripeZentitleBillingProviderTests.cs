@@ -109,6 +109,11 @@ public sealed class StripeZentitleBillingProviderTests
         Assert.Equal("account-ref-1", customer.Form["metadata[customer_ref]"]);
         var request = Assert.Single(handler.Requests, candidate => candidate.Path == "/v1/checkout/sessions");
         Assert.Equal(isPerpetual ? "payment" : "subscription", request.Form["mode"]);
+        if (!isPerpetual)
+        {
+            Assert.Equal("classic", request.Form["subscription_data[billing_mode][type]"]);
+        }
+
         Assert.Equal("session-1", request.Form["client_reference_id"]);
         Assert.Equal("cus_existing", request.Form["customer"]);
         Assert.Equal("price_1", request.Form["line_items[0][price]"]);

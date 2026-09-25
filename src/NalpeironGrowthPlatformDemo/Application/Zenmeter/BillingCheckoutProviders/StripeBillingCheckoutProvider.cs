@@ -151,7 +151,11 @@ public sealed class StripeBillingCheckoutProvider(
                     .ToList(),
                 Metadata = metadata,
                 SubscriptionData = checkout.Purpose == BillingCheckoutPurpose.SubscriptionPurchase
-                    ? new SessionSubscriptionDataOptions { Metadata = metadata }
+                    ? new SessionSubscriptionDataOptions
+                    {
+                        Metadata = metadata,
+                        BillingMode = new SessionSubscriptionDataBillingModeOptions { Type = StripeBillingModes.Classic }
+                    }
                     : null
             },
             cancellationToken: cancellationToken);

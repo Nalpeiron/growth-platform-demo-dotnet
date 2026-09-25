@@ -106,7 +106,13 @@ public sealed class StripeZentitleBillingProvider(
                     }
                 ],
                 Metadata = metadata,
-                SubscriptionData = isPerpetual ? null : new SessionSubscriptionDataOptions { Metadata = metadata },
+                SubscriptionData = isPerpetual
+                    ? null
+                    : new SessionSubscriptionDataOptions
+                    {
+                        Metadata = metadata,
+                        BillingMode = new SessionSubscriptionDataBillingModeOptions { Type = StripeBillingModes.Classic }
+                    },
                 PaymentIntentData = isPerpetual ? new SessionPaymentIntentDataOptions { Metadata = metadata } : null
             },
             cancellationToken: cancellationToken);

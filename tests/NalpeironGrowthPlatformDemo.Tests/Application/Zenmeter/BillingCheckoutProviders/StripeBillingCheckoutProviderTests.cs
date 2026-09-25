@@ -139,6 +139,7 @@ public sealed class StripeBillingCheckoutProviderTests
 
         var checkoutRequest = Assert.Single(handler.Requests, request => request.Path == "/v1/checkout/sessions");
         Assert.Equal("cus_existing", checkoutRequest.Form["customer"]);
+        Assert.Equal("classic", checkoutRequest.Form["subscription_data[billing_mode][type]"]);
         Assert.False(checkoutRequest.Form.ContainsKey("subscription_data[metadata][order_ref_id]"));
         Assert.False(checkoutRequest.Form.ContainsKey("metadata[order_ref_id]"));
         Assert.Equal("cs_1", result.ProviderCheckoutSessionId);
@@ -271,6 +272,7 @@ public sealed class StripeBillingCheckoutProviderTests
         Assert.Equal("https://checkout.stripe.test/topup", result.RedirectUrl);
         var request = Assert.Single(handler.Requests, candidate => candidate.Path == "/v1/checkout/sessions");
         Assert.Equal("payment", request.Form["mode"]);
+        Assert.DoesNotContain(request.Form.Keys, key => key.StartsWith("subscription_data"));
         Assert.Equal("top_up", request.Form["metadata[billing_purpose]"]);
         Assert.Equal(checkout.OrderRefId, request.Form["metadata[order_ref_id]"]);
         Assert.Equal("topup-1", request.Form["metadata[top_up_operation_id]"]);
