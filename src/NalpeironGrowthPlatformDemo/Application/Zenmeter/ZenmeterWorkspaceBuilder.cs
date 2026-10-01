@@ -51,13 +51,16 @@ internal static class ZenmeterWorkspaceBuilder
             UsageFeatures: ZenmeterFeatureProjector.ProjectUsageFeatures(features, featureRates, activeAddonIds, dataIssues),
             AccessFeatures: ZenmeterFeatureProjector.ProjectAccessFeatures(features, activeAddonIds, dataIssues),
             ActiveAddons: ZenmeterAddonProjector.ProjectActiveAddons(addons, dataIssues),
-            TopUpOptions: topUpOptions,
+            TopUpOptions: ZenmeterTrialPolicy.IsTrialSubscription(subscription) ? [] : topUpOptions,
             User: BuildUserView(user, session.User),
             Refs: new ZenmeterProvisioningRefs(session.CustomerId, session.SubscriptionId),
             Events: session.Events.ToList(),
             DataIssues: dataIssues.ToList(),
             CustomerUrl: NalpeironWebLinks.Build(webBase, "zenmeter", "customers", session.CustomerId),
-            SubscriptionUrl: NalpeironWebLinks.Build(webBase, "zenmeter", "subscriptions", session.SubscriptionId));
+            SubscriptionUrl: NalpeironWebLinks.Build(webBase, "zenmeter", "subscriptions", session.SubscriptionId))
+        {
+            IsTrial = ZenmeterTrialPolicy.IsTrialSubscription(subscription)
+        };
     }
 
     private static ZenmeterUserView BuildUserView(

@@ -1,5 +1,5 @@
 window.nalpeironFastSpring = {
-    openPopupCheckout: function (storefront, sessionId, productPaths, orderTags, returnUrl, requireOrderReference) {
+    openPopupCheckout: function (storefront, sessionId, productPaths, orderTags, returnUrl, requireOrderReference, providerCheckoutSessionId) {
         const setStatus = function (message) {
             const status = document.getElementById('fastspring-checkout-status');
             if (status) {
@@ -78,6 +78,11 @@ window.nalpeironFastSpring = {
         };
         script.onload = function () {
             if (window.fastspring && window.fastspring.builder) {
+                if (providerCheckoutSessionId) {
+                    window.fastspring.builder.checkout(providerCheckoutSessionId);
+                    return;
+                }
+
                 console.debug('Opening FastSpring popup checkout', {storefront, sessionId, selectedProducts, tags});
                 if (selectedProducts.length === 0) {
                     setStatus('No FastSpring products were selected. Return to checkout and try again.');

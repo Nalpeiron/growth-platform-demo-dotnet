@@ -9,7 +9,33 @@ namespace NalpeironGrowthPlatformDemo.Tests.Nalpeiron.Zenmeter;
 public sealed class ZenmeterManagementClientTests
 {
     [Fact]
-    public async Task CreateSubscription_WithSkus_SendsLineItemsWithQuantityOneAndAsPaidToGeneratedClient()
+    public async Task ConvertToPaid_WithExistingSubscription_CallsGeneratedConversionEndpoint()
+    {
+        // arrange
+        using var cancellation = new CancellationTokenSource();
+        var called = false;
+        var api = GeneratedClientProxy.Create((method, args) =>
+        {
+            Assert.Equal(nameof(Zm.IZenmeterManagementApiGeneratedClient.ZenmeterSubscriptions_ConvertToPaidAsync), method.Name);
+            Assert.Equal("existing-subscription", args[0]);
+            Assert.Equal(cancellation.Token, args[1]);
+            called = true;
+            return Task.CompletedTask;
+        });
+        var client = new ZenmeterManagementClient(api);
+
+        // act
+        await client.ConvertToPaid("existing-subscription", cancellation.Token);
+
+        // assert
+        Assert.True(called);
+    }
+
+    [Theory]
+    [InlineData(ZenmeterSubscriptionStartMode.Paid, Zm.SubscriptionStartMode.Paid)]
+    [InlineData(ZenmeterSubscriptionStartMode.Trial, Zm.SubscriptionStartMode.Trial)]
+    public async Task CreateSubscription_WithStartMode_SendsModeAndLineItemsToGeneratedClient(
+        ZenmeterSubscriptionStartMode startMode, Zm.SubscriptionStartMode expectedMode)
     {
         // arrange
         Zm.CreateSubscriptionApiRequest? request = null;
@@ -27,11 +53,12 @@ public sealed class ZenmeterManagementClientTests
             "cust_123",
             ["base-sku", "addon-sku"],
             "order-123",
-            CancellationToken.None);
+            CancellationToken.None,
+            startMode);
 
         // assert
         Assert.NotNull(request);
-        Assert.Equal(Zm.SubscriptionStartMode.Paid, request.StartMode);
+        Assert.Equal(expectedMode, request.StartMode);
         Assert.Equal("cust_123", request.CustomerId);
         Assert.Collection(
             request.LineItems,

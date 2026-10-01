@@ -57,40 +57,55 @@
 
         <PricingPlanSelectionSection Pricing="_pricing"
                                      SelectedTierKey="@_tierKey"
+                                     StartTrial="IsTrial"
                                      Period="@_period"
                                      TierPricesLoading="@_tierPricesLoading"
                                      TierPricesFailed="@_tierPricesFailed"
                                      PeriodChanged="SetPeriod"
-                                     TierSelected="SelectTier"/>
+                                     TierSelected="SelectTier"
+                                     TrialTierSelected="SelectTrialTier"/>
 
-        <FeatureAddonSelectionSection SelectedTierKey="@_tierKey"
-                                      SelectedOffering="SelectedOffering"
-                                      AddonsLoading="@_addonsLoading"
-                                      AddonLoadError="@_addonLoadError"
-                                      AddonPricesLoading="@_addonPricesLoading"
-                                      AddonPricesFailed="@_addonPricesFailed"
-                                      FeatureAddons="FeatureAddOns"
-                                      SelectedFeatureAddons="_featureAddons"
-                                      FeatureToggled="ToggleFeature"/>
+        @if (IsTrial)
+        {
+            <div class="mt-10 rounded-xl border border-indigo-100 bg-indigo-50 px-6 py-5" role="status">
+                <h2 class="text-lg font-semibold text-slate-900">Add-ons</h2>
+                <p class="mt-2 text-sm text-slate-600">Paid add-ons can be added after the trial period or when you switch to a paid plan.</p>
+            </div>
+        }
+        else
+        {
+            <FeatureAddonSelectionSection SelectedTierKey="@_tierKey"
+                                          SelectedOffering="SelectedOffering"
+                                          AddonsLoading="@_addonsLoading"
+                                          AddonLoadError="@_addonLoadError"
+                                          AddonPricesLoading="@_addonPricesLoading"
+                                          AddonPricesFailed="@_addonPricesFailed"
+                                          FeatureAddons="FeatureAddOns"
+                                          SelectedFeatureAddons="_featureAddons"
+                                          FeatureToggled="ToggleFeature"/>
 
-        <CreditAddonSelectionSection SelectedTierKey="@_tierKey"
-                                     SelectedOffering="SelectedOffering"
-                                     MeterUnitPluralName="@_pricing.MeterUnitPluralName"
-                                     AddonPricesLoading="@_addonPricesLoading"
-                                     AddonPricesFailed="@_addonPricesFailed"
-                                     PlanCredits="@PlanCredits"
-                                     CreditIndex="@_creditIndex"
-                                     CreditSteps="_creditSteps"
-                                     SelectedCreditStep="@SelectedCreditStep"
-                                     CreditAddOnUnavailableMessage="@CreditAddOnUnavailableMessage"
-                                     CreditChanged="SetCredit"/>
+            <CreditAddonSelectionSection SelectedTierKey="@_tierKey"
+                                         SelectedOffering="SelectedOffering"
+                                         MeterUnitPluralName="@_pricing.MeterUnitPluralName"
+                                         AddonPricesLoading="@_addonPricesLoading"
+                                         AddonPricesFailed="@_addonPricesFailed"
+                                         PlanCredits="@PlanCredits"
+                                         CreditIndex="@_creditIndex"
+                                         CreditSteps="_creditSteps"
+                                         SelectedCreditStep="@SelectedCreditStep"
+                                         CreditAddOnUnavailableMessage="@CreditAddOnUnavailableMessage"
+                                         CreditChanged="SetCredit"/>
+
+        }
 
         <PricingCheckoutSummaryBar Title="@SummaryTitle"
                                    Items="@SummaryItems"
                                    Total="@Total"
-                                   PricesLoading="@PricesLoading"
-                                   PricesFailed="@PricesFailed"
-                                   Disabled="@(SelectedOffering is null || _addonsLoading || PricesLoading || PricesFailed)"
+                                   PricesLoading="@(IsTrial ? _tierPricesLoading : PricesLoading)"
+                                   PricesFailed="@(IsTrial ? _tierPricesFailed : PricesFailed)"
+                                   Disabled="@(!CanCheckout)"
+                                   CheckoutLabel="@(IsTrial ? "Start free trial" : "Checkout")"
+                                   AmountLabel="@(IsTrial ? "due today" : "first invoice")"
                                    Checkout="GoToCheckout"/>
 
         <div class="mt-8">
@@ -130,6 +145,10 @@
                 .FirstOrDefault(variant => variant.BillingSystem == SelectedBillingSystem)
                 ?.LogoPath;
 
+    private bool _startTrial;
+    private bool IsTrial => _startTrial && SelectedOffering?.TrialDays is not null;
+    private bool CanCheckout => SelectedOffering is not null &&
+        (IsTrial ? !_tierPricesLoading && !_tierPricesFailed : !_addonsLoading && !PricesLoading && !PricesFailed);
     private string? _tierKey;
     private ZenmeterOfferingPeriod _period = ZenmeterOfferingPeriod.Monthly;
     private readonly HashSet<string> _featureAddons = new(StringComparer.OrdinalIgnoreCase);
@@ -253,7 +272,7 @@
 
     private ZenmeterOfferingPricing? SelectedOffering =>
         SelectedTier?.Offerings.FirstOrDefault(offering =>
-            offering.IsVisible && !offering.IsTrial && offering.Period == _period);
+            offering.IsVisible && offering.Period == _period);
 
     private long PlanCredits => SelectedTier?.IncludedMeterAmount ?? 0;
 
@@ -269,6 +288,11 @@
     {
         get
         {
+            if (IsTrial)
+            {
+                return $"{SelectedOffering!.TrialDays}-day free trial of the base plan.";
+            }
+
             if (_addonsLoading)
             {
                 return "Loading available add-ons...";
@@ -289,7 +313,7 @@
         }
     }
 
-    private int Total =>
+    private int Total => IsTrial ? 0 :
         (SelectedOffering?.Price ?? 0)
         + FeatureAddOns.Where(addon => _featureAddons.Contains(addon.Sku)).Sum(addon => addon.Price)
         + SelectedCreditStep.Price;
@@ -316,17 +340,24 @@
             return;
         }
 
+        _startTrial = false;
         _period = normalizedPeriod;
         await LoadCompatibleAddons();
     }
 
-    private async Task SelectTier(string tierKey)
+    private Task SelectTier(string tierKey) => SelectPlan(tierKey, startTrial: false);
+
+    private Task SelectTrialTier(string tierKey) => SelectPlan(tierKey, startTrial: true);
+
+    private async Task SelectPlan(string tierKey, bool startTrial)
     {
-        if (string.Equals(_tierKey, tierKey, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(_tierKey, tierKey, StringComparison.OrdinalIgnoreCase)
+            && _startTrial == startTrial && !_addonPricesFailed)
         {
             return;
         }
 
+        _startTrial = startTrial;
         _tierKey = tierKey;
         await LoadCompatibleAddons();
     }
@@ -362,7 +393,7 @@
         CancelAddonLoad();
         var offering = SelectedOffering;
 
-        if (offering is null)
+        if (offering is null || IsTrial)
         {
             _compatibleAddons = [];
             _featureAddons.Clear();
@@ -370,6 +401,7 @@
             _addonPricesLoading = false;
             _addonPricesFailed = false;
             _addonsLoading = false;
+            _priceAlert = null;
             RebuildCreditSteps();
             return;
         }
@@ -492,12 +524,19 @@
 
     private void GoToCheckout()
     {
-        if (SelectedOffering is null || _addonsLoading || PricesLoading || PricesFailed)
+        if (!CanCheckout)
         {
             return;
         }
 
-        var query = new List<string> { $"sku={Uri.EscapeDataString(SelectedOffering.Sku)}" };
+        var query = new List<string> { $"sku={Uri.EscapeDataString(SelectedOffering!.Sku)}" };
+
+        if (IsTrial)
+        {
+            query.Add("trial=true");
+            Nav.NavigateTo($"{DemoRoutes.ZenmeterCheckoutFor(SelectedBillingSystem)}?{string.Join("&", query)}");
+            return;
+        }
 
         foreach (var sku in _featureAddons)
         {

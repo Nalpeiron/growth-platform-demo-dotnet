@@ -15,6 +15,65 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zenmeter.Billing.FastSpr
 public sealed class FastSpringBillingApiClientTests
 {
     [Fact]
+    public async Task GetSubscription_WhenFastSpringReturnsError_LogsUnsuccessfulResponse()
+    {
+        // arrange
+        var logger = new Mock<ILogger<FastSpringBillingApiClient>>();
+        var handler = new RecordingHandler(HttpStatusCode.Forbidden, """{"error":"forbidden"}""");
+        var client = CreateClient(handler, logger.Object);
+
+        // act
+        using var response = await client.GetSubscription("subscription-1", CancellationToken.None);
+
+        // assert
+        Assert.Null(response.Payload);
+        logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((value, _) => value.ToString()!.Contains("FastSpring subscription lookup API call returned 403")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task GetSubscription_WithSubscription_UsesAuthenticatedReadAndPreservesStatus(HttpStatusCode status)
+    {
+        // arrange
+        var handler = new RecordingHandler(status, """{"state":"trial","priceDisplay":"$99.00"}""");
+        var client = CreateClient(handler);
+
+        // act
+        using var response = await client.GetSubscription("sub/1", CancellationToken.None);
+
+        // assert
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Equal("/subscriptions/sub%2F1", request.Path);
+        Assert.Equal("Basic", request.Authorization?.Scheme);
+        Assert.Equal(status, response.StatusCode);
+        Assert.Equal(status == HttpStatusCode.OK, response.Payload is not null);
+    }
+
+    [Fact]
+    public async Task CreateSession_WithTrialPayload_PostsAuthorizedJsonToSessionsEndpoint()
+    {
+        // arrange
+        var handler = new RecordingHandler(HttpStatusCode.OK, """{"id":"fs_session_1"}""");
+        var client = CreateClient(handler);
+        var payload = new { items = new[] { new { product = "base-sku", pricing = new { trial = 14 } } } };
+
+        // act
+        var response = await client.CreateSession(payload, CancellationToken.None);
+
+        // assert
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal("/sessions", request.Path);
+        Assert.Equal("Basic", request.Authorization?.Scheme);
+        Assert.Equal(JsonSerializer.Serialize(payload), request.Body);
+        Assert.Equal("""{"id":"fs_session_1"}""", response.Body);
+    }
+
+    [Fact]
     public async Task GetProductPricePage_WithPageNumber_SendsAuthorizedPriceRequestAndParsesJson()
     {
         // arrange
@@ -134,6 +193,26 @@ public sealed class FastSpringBillingApiClientTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    public async Task GetAccountManagementUrl_WithAccount_UsesAuthenticatedRead(HttpStatusCode status)
+    {
+        // arrange
+        var handler = new RecordingHandler(status, "{} ");
+        var client = CreateClient(handler);
+
+        // act
+        using var response = await client.GetAccountManagementUrl("account/1", CancellationToken.None);
+
+        // assert
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Equal("/accounts/account%2F1/authenticate", request.Path);
+        Assert.Equal("Basic", request.Authorization?.Scheme);
+        Assert.Equal(status == HttpStatusCode.OK, response.Payload is not null);
+    }
+
     private static FastSpringBillingApiClient CreateClient(
         RecordingHandler handler,
         ILogger<FastSpringBillingApiClient>? logger = null) =>
@@ -148,7 +227,8 @@ public sealed class FastSpringBillingApiClientTests
                 {
                     ApiUrl = "https://api.fastspring.test",
                     ApiUsername = "user",
-                    ApiPassword = "password"
+                    ApiPassword = "password",
+                    ZenmeterStorefrontUrl = "store.test/popup"
                 }
             }),
             logger ?? NullLogger<FastSpringBillingApiClient>.Instance);
@@ -173,7 +253,8 @@ public sealed class FastSpringBillingApiClientTests
 
             return new HttpResponseMessage(statusCode)
             {
-                Content = new StringContent(responseBody)
+                Content = new StringContent(responseBody),
+                RequestMessage = request
             };
         }
     }
