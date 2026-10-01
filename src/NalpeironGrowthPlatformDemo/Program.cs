@@ -178,6 +178,9 @@ builder.Services.AddScoped<ZenmeterPurchaseService>();
 builder.Services.AddScoped<ZenmeterWorkspaceQuery>();
 builder.Services.AddScoped<ZenmeterUsageService>();
 builder.Services.AddScoped<ZenmeterTopUpService>();
+builder.Services.AddScoped<ZenmeterTrialConversionService>();
+builder.Services.AddScoped<IZenmeterTrialBilling, ZenmeterTrialBilling>();
+builder.Services.AddScoped<NalpeironGrowthPlatformDemo.Application.Zenmeter.Billing.Stripe.StripeTrialBilling>();
 builder.Services.AddScoped<IZenmeterDemo, ZenmeterDemoFacade>();
 
 var app = builder.Build();

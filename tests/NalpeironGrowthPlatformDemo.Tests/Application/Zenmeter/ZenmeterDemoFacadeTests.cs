@@ -24,6 +24,140 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zenmeter;
 
 public sealed class ZenmeterDemoFacadeTests
 {
+    [Theory]
+    [InlineData(BillingSystem.None)]
+    [InlineData(BillingSystem.Stripe)]
+    [InlineData(BillingSystem.FastSpring)]
+    public async Task GetCheckoutInfo_TrialWithoutConfiguredPrice_DoesNotAdvertiseZeroPriceOrAllowPurchase(BillingSystem billingSystem)
+    {
+        // arrange
+        var service = CreateService(new StubZenmeterManagementClient(), out var customers, out var catalog);
+        catalog.TrialDays = 7;
+        catalog.PlanVisible = false;
+
+        // act
+        var preview = await service.GetCheckoutInfo(billingSystem, "elevate-saas-scale-monthly", null,
+            CancellationToken.None, ZenmeterSubscriptionStartMode.Trial);
+        var purchase = await service.Purchase(billingSystem, "elevate-saas-scale-monthly", null,
+            "Acme", new ZenmeterUserInput("Alex", "Morgan", "alex@example.test"), "missing-price-trial",
+            CancellationToken.None, ZenmeterSubscriptionStartMode.Trial);
+
+        // assert
+        Assert.Null(preview);
+        Assert.NotNull(purchase.Error);
+        Assert.Equal(0, customers.CreateCalls);
+    }
+
+    [Theory]
+    [InlineData(BillingSystem.None)]
+    [InlineData(BillingSystem.Stripe)]
+    [InlineData(BillingSystem.FastSpring)]
+    public async Task Purchase_WithTrial_UsesSelectedProviderAndPreservesBillingPeriod(BillingSystem billingSystem)
+    {
+        // arrange
+        var zenmeter = new StubZenmeterManagementClient { Subscription = Subscription("sub-1") };
+        var store = new InMemoryZenmeterDemoSessionStore();
+        var service = CreateService(zenmeter, out var customers, out var catalog, store: store);
+        catalog.TrialDays = 14;
+
+        // act
+        var result = await service.Purchase(billingSystem, "elevate-saas-scale-monthly", null,
+            "Acme", new ZenmeterUserInput("Alex", "Morgan", "alex@example.test"), "trial-checkout",
+            CancellationToken.None, ZenmeterSubscriptionStartMode.Trial);
+
+        // assert
+        Assert.Null(result.Error);
+        Assert.Equal(1, customers.CreateCalls);
+        var session = store.Get(result.SessionId!);
+        Assert.NotNull(session);
+        Assert.Equal(billingSystem, session.BillingSystem);
+        Assert.Equal(ZenmeterOfferingPeriod.Monthly, session.Period);
+        Assert.Equal(ZenmeterSubscriptionStartMode.Trial, session.StartMode);
+        Assert.Empty(catalog.RequestedAddonBillingSystems);
+        if (billingSystem == BillingSystem.None)
+        {
+            Assert.Equal(ZenmeterSubscriptionStartMode.Trial, zenmeter.StartMode);
+            Assert.Equal(ZenmeterCheckoutStatuses.Completed, session.CheckoutStatus);
+        }
+        else
+        {
+            Assert.Equal(ZenmeterCheckoutStatuses.Pending, session.CheckoutStatus);
+        }
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(14, "elevate-saas-security-suite-1m")]
+    public async Task Purchase_WithUnavailableTrialOrAddons_RejectsBeforeCreatingCustomer(int? trialDays, string? addon)
+    {
+        // arrange
+        var service = CreateService(new StubZenmeterManagementClient(), out var customers, out var catalog);
+        catalog.TrialDays = trialDays;
+
+        // act
+        var result = await service.Purchase(BillingSystem.None, "elevate-saas-scale-monthly", addon,
+            "Acme", new ZenmeterUserInput("Alex", "Morgan", "alex@example.test"), "invalid-trial",
+            CancellationToken.None, ZenmeterSubscriptionStartMode.Trial);
+
+        // assert
+        Assert.NotNull(result.Error);
+        Assert.Null(result.SessionId);
+        Assert.Equal(0, customers.CreateCalls);
+        Assert.Empty(catalog.RequestedAddonBillingSystems);
+    }
+
+    [Fact]
+    public async Task Purchase_WhenTrialWasDisabledAfterPreview_RejectsBeforeCreatingCustomer()
+    {
+        // arrange
+        var service = CreateService(new StubZenmeterManagementClient(), out var customers, out var catalog);
+        catalog.TrialDays = 14;
+        var preview = await service.GetCheckoutInfo(BillingSystem.None, "elevate-saas-scale-monthly", null,
+            CancellationToken.None, ZenmeterSubscriptionStartMode.Trial);
+        catalog.TrialDays = null;
+
+        // act
+        var purchase = await service.Purchase(BillingSystem.None, "elevate-saas-scale-monthly", null,
+            "Acme", new ZenmeterUserInput("Alex", "Morgan", "alex@example.test"), "disabled-trial",
+            CancellationToken.None, ZenmeterSubscriptionStartMode.Trial);
+
+        // assert
+        Assert.True(preview!.CanPurchase);
+        Assert.Contains("14-day free trial", preview.Summary);
+        Assert.NotNull(purchase.Error);
+        Assert.Equal(0, customers.CreateCalls);
+    }
+
+    [Fact]
+    public async Task GetWorkspace_WhenTrialConvertsToPaid_UpdatesTrialStateAndRestoresTopUps()
+    {
+        // arrange
+        var subscription = Subscription("sub-1");
+        subscription.StatusInfo.Trial = true;
+        var zenmeter = new StubZenmeterManagementClient { Subscription = subscription };
+        var service = CreateService(zenmeter, out _, out var catalog);
+        catalog.TrialDays = 14;
+        var purchase = await service.Purchase(BillingSystem.None, "elevate-saas-scale-monthly", null,
+            "Acme", new ZenmeterUserInput("Alex", "Morgan", "alex@example.test"), "converting-trial",
+            CancellationToken.None, ZenmeterSubscriptionStartMode.Trial);
+
+        // act
+        var trial = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+        var topUp = await service.AddTopUp(purchase.SessionId!, "elevate-saas-credits-100k-monthly", CancellationToken.None);
+        subscription.StatusInfo.Trial = false;
+        var paid = await service.GetWorkspace(purchase.SessionId!, CancellationToken.None);
+
+        // assert
+        Assert.True(trial!.IsTrial);
+        Assert.Equal(subscription.StatusInfo.ExpiryDate, trial.NextRenewalAt);
+        Assert.Empty(trial.TopUpOptions);
+        Assert.False(topUp.Succeeded);
+        Assert.Equal("trial_top_up_unavailable", topUp.Code);
+        Assert.Null(zenmeter.AddedAddonSkus);
+        Assert.False(paid!.IsTrial);
+        Assert.NotEmpty(paid.TopUpOptions);
+    }
+
     [Fact]
     public async Task GetWorkspace_WhenSubscriptionDetailsAreMissing_ReportsUnverifiedAddonAccess()
     {
@@ -2495,6 +2629,8 @@ public sealed class ZenmeterDemoFacadeTests
     {
         public List<BillingSystem> RequestedPricingBillingSystems { get; } = [];
         public List<BillingSystem> RequestedAddonBillingSystems { get; } = [];
+        public int? TrialDays { get; set; }
+        public bool PlanVisible { get; set; } = true;
         public int PricingShellCalls { get; private set; }
 
         public Task<ZenmeterCatalogPricing> GetPricingShell(CancellationToken cancellationToken)
@@ -2541,7 +2677,7 @@ public sealed class ZenmeterDemoFacadeTests
             CancellationToken cancellationToken) =>
             Task.FromResult(Pricing().Tiers[0].AddOns);
 
-        private static ZenmeterCatalogPricing Pricing() =>
+        private ZenmeterCatalogPricing Pricing() =>
             new(
                 "Elevate SaaS",
                 "credits",
@@ -2556,10 +2692,9 @@ public sealed class ZenmeterDemoFacadeTests
                             new ZenmeterOfferingPricing(
                                 ZenmeterOfferingPeriod.Monthly,
                                 "elevate-saas-scale-monthly",
-                                IsTrial: false,
-                                IsVisible: true,
-                                Price: 149,
-                                BillingLabel: "per month")
+                                IsVisible: PlanVisible,
+                                Price: PlanVisible ? 149 : 0,
+                                BillingLabel: PlanVisible ? "per month" : "price not configured") { TrialDays = TrialDays }
                         ],
                         100000,
                         [
@@ -2662,6 +2797,7 @@ public sealed class ZenmeterDemoFacadeTests
         public Exception? CreateUserException { get; init; }
         public TimeSpan AddAddonDelay { get; init; }
         public Queue<IReadOnlyList<Zm.SubscriptionUserModel>> QueuedUserLists { get; } = new();
+        public ZenmeterSubscriptionStartMode StartMode { get; private set; }
         public string? CustomerId { get; private set; }
         public IReadOnlyList<string>? Skus { get; private set; }
         public string? OrderRefId { get; private set; }
@@ -2690,13 +2826,17 @@ public sealed class ZenmeterDemoFacadeTests
             string customerId,
             IReadOnlyList<string> skus,
             string orderRefId,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid)
         {
+            StartMode = startMode;
             CustomerId = customerId;
             Skus = skus;
             OrderRefId = orderRefId;
             return Task.FromResult(Subscription);
         }
+
+        public Task ConvertToPaid(string subscriptionId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<Zm.SubscriptionModel?> GetSubscription(string subscriptionId,
             CancellationToken cancellationToken)

@@ -6,6 +6,10 @@
             <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Subscription</h2>
             <span
                 class="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide @SubscriptionStatusClass(View.Status)">@View.Status</span>
+            @if (View.IsTrial)
+            {
+                <span class="ml-2 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold uppercase text-indigo-700">Trial</span>
+            }
         </div>
         <div class="grid gap-3 text-right text-sm sm:grid-cols-3">
             <div>
@@ -17,11 +21,16 @@
                 <div class="mt-1 font-semibold text-slate-800">@View.BillingPeriod</div>
             </div>
             <div>
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">Next renewal</div>
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">@(View.IsTrial ? "Trial ends" : "Next renewal")</div>
                 <div class="mt-1 font-semibold text-slate-800">@DateOrDash(View.NextRenewalAt)</div>
             </div>
         </div>
     </div>
+
+    @if (View.IsTrial)
+    {
+        <ZenmeterTrialConversionPanel SessionId="@SessionId" IsBusy="IsBusy" OnConverted="OnConverted" OnBusyChanged="OnBusyChanged"/>
+    }
 
     @if (View.CustomerUrl is not null || View.SubscriptionUrl is not null)
     {
@@ -44,6 +53,10 @@
 
 @code {
     [Parameter, EditorRequired] public ZenmeterWorkspaceView View { get; set; } = null!;
+    [Parameter, EditorRequired] public string SessionId { get; set; } = null!;
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public EventCallback OnConverted { get; set; }
+    [Parameter] public EventCallback<bool> OnBusyChanged { get; set; }
 
     private static string DateOrDash(DateTimeOffset? value) =>
         value?.ToString("MMM d, yyyy") ?? "-";

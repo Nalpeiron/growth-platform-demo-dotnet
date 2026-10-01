@@ -1,5 +1,11 @@
 namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
 
+public enum ZenmeterSubscriptionStartMode
+{
+    Paid,
+    Trial
+}
+
 public enum ZenmeterBillingPeriod
 {
     Unknown,

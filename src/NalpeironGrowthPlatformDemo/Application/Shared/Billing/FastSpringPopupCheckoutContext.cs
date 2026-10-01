@@ -4,4 +4,5 @@ public sealed record FastSpringPopupCheckoutContext(
     string Storefront,
     IReadOnlyList<string> ProductPaths,
     IReadOnlyDictionary<string, string?> OrderTags,
-    string ReturnUrl);
+    string ReturnUrl,
+    string? ProviderCheckoutSessionId = null);

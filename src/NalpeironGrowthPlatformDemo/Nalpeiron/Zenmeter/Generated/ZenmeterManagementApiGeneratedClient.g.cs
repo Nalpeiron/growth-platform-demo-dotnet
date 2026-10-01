@@ -8853,14 +8853,14 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// <summary>
         /// Remaining amount available for consumption, if limited.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("available", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public decimal? Available { get; set; } = default!;
+        [Newtonsoft.Json.JsonProperty("available", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public decimal Available { get; set; } = default!;
 
         /// <summary>
         /// Effective bucket limit, if defined.
         /// </summary>
-        [Newtonsoft.Json.JsonProperty("limit", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
-        public long? Limit { get; set; } = default!;
+        [Newtonsoft.Json.JsonProperty("limit", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public long Limit { get; set; } = default!;
 
     }
 
@@ -9416,6 +9416,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     {
 
         /// <summary>
+        /// Revision of the subscription consumption configuration used by this result.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionRevision", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int SubscriptionRevision { get; set; } = default!;
+
+        /// <summary>
         /// Feature key requested by the caller.
         /// </summary>
         [Newtonsoft.Json.JsonProperty("requestedFeatureKey", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -9472,7 +9478,8 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         public long Amount { get; set; } = default!;
 
         /// <summary>
-        /// Optional idempotency key that prevents duplicate consumption for retried calls.
+        /// Optional idempotency key that prevents duplicate consumption for the same subscription for 24 hours.
+        /// <br/>UUID values are recommended.
         /// </summary>
         [Newtonsoft.Json.JsonProperty("operationId", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         [System.ComponentModel.DataAnnotations.StringLength(50)]
@@ -9492,6 +9499,33 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// </summary>
         [Newtonsoft.Json.JsonProperty("data", Required = Newtonsoft.Json.Required.Default, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public ConsumedFeatureModel? Data { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Commercial shape of a Zenmeter usage grant configuration.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ConsumptionModel
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"notConfigured")]
+        NotConfigured = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"unlimited")]
+        Unlimited = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"payAsYouGo")]
+        PayAsYouGo = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"includedHardLimit")]
+        IncludedHardLimit = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"includedOnDemand")]
+        IncludedOnDemand = 4,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"includedSoftLimit")]
+        IncludedSoftLimit = 5,
 
     }
 
@@ -10877,6 +10911,13 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         [Newtonsoft.Json.JsonProperty("user", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public UsageGrantModel User { get; set; } = default!;
 
+        /// <summary>
+        /// Commercial consumption model for these scoped grants.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("consumptionModel", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+        public ConsumptionModel ConsumptionModel { get; set; } = default!;
+
     }
 
     /// <summary>
@@ -11280,6 +11321,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     {
 
         /// <summary>
+        /// Revision of the subscription consumption configuration.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionRevision", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int SubscriptionRevision { get; set; } = default!;
+
+        /// <summary>
         /// Resolved feature grants for the subscription.
         /// </summary>
         [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -11347,6 +11394,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// </summary>
         [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string Id { get; set; } = default!;
+
+        /// <summary>
+        /// Revision of the subscription consumption configuration.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionRevision", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int SubscriptionRevision { get; set; } = default!;
 
         /// <summary>
         /// Customer details associated with the subscription.
@@ -11436,6 +11489,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     {
 
         /// <summary>
+        /// Revision of the subscription consumption configuration.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionRevision", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int SubscriptionRevision { get; set; } = default!;
+
+        /// <summary>
         /// Resolved meter grants for the subscription.
         /// </summary>
         [Newtonsoft.Json.JsonProperty("items", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -11455,6 +11514,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
         /// </summary>
         [Newtonsoft.Json.JsonProperty("id", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
         public string Id { get; set; } = default!;
+
+        /// <summary>
+        /// Revision of the subscription consumption configuration.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionRevision", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int SubscriptionRevision { get; set; } = default!;
 
         /// <summary>
         /// Customer details associated with the subscription.
@@ -12256,6 +12321,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter.Generated
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.7.1.0 (NJsonSchema v11.6.1.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class UserBalanceModel
     {
+
+        /// <summary>
+        /// Revision of the subscription consumption configuration used by this result.
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("subscriptionRevision", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public int SubscriptionRevision { get; set; } = default!;
 
         /// <summary>
         /// Balance snapshots for the requested subscription user.
