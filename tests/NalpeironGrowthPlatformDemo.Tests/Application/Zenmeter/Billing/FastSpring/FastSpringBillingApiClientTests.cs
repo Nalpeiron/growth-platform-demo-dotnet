@@ -73,6 +73,7 @@ public sealed class FastSpringBillingApiClientTests
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((value, _) =>
+                    value != null &&
                     value.ToString()!.Contains("FastSpring order lookup API call returned 404") &&
                     value.ToString()!.Contains("""{"error":"missing"}""")),
                 null,
