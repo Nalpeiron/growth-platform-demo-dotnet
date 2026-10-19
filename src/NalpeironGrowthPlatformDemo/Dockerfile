@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-ARG SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.401-noble
-ARG RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.23
+ARG SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.402-noble
+ARG RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0.13-alpine3.24
 ARG INSTALL_RUNTIME_DEPENDENCIES=true
 
 FROM ${SDK_IMAGE} AS build
