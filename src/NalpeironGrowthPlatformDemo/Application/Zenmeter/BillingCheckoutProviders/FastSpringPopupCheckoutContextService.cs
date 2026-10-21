@@ -76,7 +76,8 @@ public sealed class FastSpringPopupCheckoutContextService(
                         $"{DemoRoutes.ZenmeterBillingReturn}?sessionId={Uri.EscapeDataString(session.SessionId)}";
                 }
 
-                return new FastSpringPopupCheckoutContext(storefront, productPaths, orderTags, returnUrl);
+                return new FastSpringPopupCheckoutContext(storefront, productPaths, orderTags, returnUrl,
+                    isTopUp ? null : session.ProviderCheckoutSessionId);
             });
 
     private static IEnumerable<string> ParseSkus(string? skus) =>

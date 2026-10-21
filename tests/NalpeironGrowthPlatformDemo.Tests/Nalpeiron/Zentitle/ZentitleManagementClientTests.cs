@@ -17,6 +17,7 @@ public sealed class ZentitleManagementClientTests
                 200,
                 "customer-1",
                 null,
+                null,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Zt.PaginatedListOfEntitlementGroupListModel
             {
@@ -51,6 +52,7 @@ public sealed class ZentitleManagementClientTests
                 1,
                 200,
                 "customer-1",
+                null,
                 null,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Zt.PaginatedListOfEntitlementGroupListModel

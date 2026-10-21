@@ -1,15 +1,8 @@
 @namespace NalpeironGrowthPlatformDemo.Components.Zenmeter
 
-<label class="group relative block h-full @(SelectedPlan is null ? "cursor-not-allowed" : "cursor-pointer")">
-    <input type="radio"
-           name="tierKey"
-           value="@Tier.Key"
-           checked="@Selected"
-           @onchange="OnChanged"
-           disabled="@(SelectedPlan is null)"
-           class="peer absolute inset-0 z-10 h-full w-full opacity-0 @(SelectedPlan is null ? "cursor-not-allowed" : "cursor-pointer")"/>
-    <span
-        class="relative flex h-full flex-col rounded-lg border border-slate-200 bg-white p-8 shadow-sm transition peer-checked:border-indigo-600 peer-checked:bg-indigo-50/40 peer-checked:ring-2 peer-checked:ring-indigo-600 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-600 @(SelectedPlan is null ? "opacity-70" : "group-hover:border-indigo-300") @(Tier.IsFeatured ? "shadow-lg" : string.Empty)">
+<article class="relative h-full">
+    <div
+        class="relative flex h-full flex-col rounded-lg border p-8 shadow-sm transition @(Selected ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600" : "border-slate-200 bg-white") @(SelectedPlan is null ? "opacity-70" : string.Empty) @(Tier.IsFeatured ? "shadow-lg" : string.Empty)">
         @if (Tier.IsFeatured)
         {
             <span
@@ -63,6 +56,31 @@
             }
         </span>
 
+        <div class="mt-6 grid gap-3 @(ReserveTrialSpace ? "lg:grid-rows-[minmax(2.875rem,auto)_minmax(2.875rem,auto)]" : string.Empty)"
+             role="group" aria-label="@($"Purchase options for {Tier.Name}")">
+            <button type="button" @onclick="() => Select(false)" disabled="@PurchaseUnavailable"
+                    aria-pressed="@(Selected && !StartTrial ? "true" : "false")"
+                    class="@ButtonClass(Selected && !StartTrial)">
+                @if (Selected && !StartTrial)
+                {
+                    <span aria-hidden="true">&#10003;</span>
+                }
+                Buy now
+            </button>
+            @if (SelectedPlan?.TrialDays is { } trialDays)
+            {
+                <button type="button" @onclick="() => Select(true)" disabled="@PurchaseUnavailable"
+                        aria-pressed="@(Selected && StartTrial ? "true" : "false")"
+                        class="@ButtonClass(Selected && StartTrial)">
+                    @if (Selected && StartTrial)
+                    {
+                        <span aria-hidden="true">&#10003;</span>
+                    }
+                    Start @trialDays-day free trial
+                </button>
+            }
+        </div>
+
         <span class="mt-6 block border-t border-slate-100 pt-6">
             <span
                 class="text-xs font-semibold uppercase tracking-wide text-slate-400">@MeterUnitPluralName included</span>
@@ -93,20 +111,33 @@
                 </span>
             </span>
         }
-    </span>
-</label>
+    </div>
+</article>
 
 @code {
     [Parameter, EditorRequired] public ZenmeterTierPricing Tier { get; set; } = null!;
     [Parameter, EditorRequired] public string MeterUnitPluralName { get; set; } = "";
     [Parameter] public ZenmeterOfferingPeriod Period { get; set; } = ZenmeterOfferingPeriod.Monthly;
     [Parameter] public bool Selected { get; set; }
+    [Parameter] public bool StartTrial { get; set; }
+    [Parameter] public bool ReserveTrialSpace { get; set; }
     [Parameter] public bool PriceLoading { get; set; }
     [Parameter] public bool PriceLoadFailed { get; set; }
     [Parameter] public EventCallback<string> OnSelect { get; set; }
+    [Parameter] public EventCallback<string> OnSelectTrial { get; set; }
 
-    private Task OnChanged() =>
-        SelectedPlan is null ? Task.CompletedTask : OnSelect.InvokeAsync(Tier.Key);
+    private bool PurchaseUnavailable => SelectedPlan is null || PriceLoading || PriceLoadFailed;
+
+    private Task Select(bool trial) =>
+        PurchaseUnavailable || (trial && SelectedPlan?.TrialDays is null)
+            ? Task.CompletedTask
+            : (trial ? OnSelectTrial : OnSelect).InvokeAsync(Tier.Key);
+
+    private static string ButtonClass(bool selected) =>
+        "inline-flex w-full items-center justify-center gap-2 rounded-full border px-6 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 "
+        + (selected
+            ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+            : "border-indigo-200 bg-white text-indigo-700 hover:border-indigo-400 hover:bg-indigo-50");
 
     private ZenmeterOfferingPricing? SelectedPlan => OfferingFor(Period);
 
@@ -114,6 +145,6 @@
 
     private ZenmeterOfferingPricing? OfferingFor(ZenmeterOfferingPeriod period) =>
         Tier.Offerings.FirstOrDefault(plan =>
-            plan.IsVisible && !plan.IsTrial && plan.Period == period);
+            plan.IsVisible && plan.Period == period);
 
 }

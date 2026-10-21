@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.Options;
+using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter;
@@ -112,8 +113,17 @@ public sealed class StripeBillingCheckoutProviderTests
         Assert.Empty(handler.Requests);
     }
 
-    [Fact]
-    public async Task CreateCheckout_WithExistingStripeCustomer_UsesCustomerOnCheckoutSession()
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(7, null)]
+    [InlineData(14, null)]
+    [InlineData(30, null)]
+    [InlineData(null, true)]
+    [InlineData(7, true)]
+    [InlineData(14, true)]
+    [InlineData(30, true)]
+    public async Task CreateCheckout_WithExistingStripeCustomer_UsesCustomerAndTrialOnCheckoutSession(
+        int? trialDays, bool? requirePaymentMethod)
     {
         // arrange
         var handler = new RecordingStripeHandler([
@@ -123,8 +133,17 @@ public sealed class StripeBillingCheckoutProviderTests
             new(HttpMethod.Post, "/v1/customers/cus_existing", """{"id":"cus_existing"}"""),
             new(HttpMethod.Post, "/v1/checkout/sessions", """{"id":"cs_1","url":"https://checkout.stripe.test/session"}""")
         ]);
-        var provider = CreateProvider(handler);
-        var checkout = BillingCheckoutTestData.CreateCheckout();
+        var options = BillingCheckoutTestData.CreateBillingOptions();
+        if (requirePaymentMethod is { } require)
+        {
+            options.Stripe.ZenmeterTrialRequirePaymentMethod = require;
+        }
+        var provider = CreateProvider(handler, options);
+        var checkout = BillingCheckoutTestData.CreateCheckout() with
+        {
+            StartMode = trialDays is null ? ZenmeterSubscriptionStartMode.Paid : ZenmeterSubscriptionStartMode.Trial,
+            TrialDays = trialDays
+        };
 
         // act
         var result = await provider.CreateCheckout(checkout, CancellationToken.None);
@@ -132,6 +151,23 @@ public sealed class StripeBillingCheckoutProviderTests
         // assert
         Assert.Equal(ZenmeterCheckoutStatuses.Pending, result.Status);
         Assert.Equal("https://checkout.stripe.test/session", result.RedirectUrl);
+        var sessionRequest = Assert.Single(handler.Requests, request => request.Path == "/v1/checkout/sessions");
+        if (trialDays is { } days)
+        {
+            Assert.Equal(days.ToString(), sessionRequest.Form["subscription_data[trial_period_days]"]);
+            Assert.Equal(requirePaymentMethod == true ? "always" : "if_required",
+                sessionRequest.Form["payment_method_collection"]);
+            Assert.Equal("cancel", sessionRequest.Form["subscription_data[trial_settings][end_behavior][missing_payment_method]"]);
+            Assert.Contains("trial=true", sessionRequest.Form["cancel_url"]);
+        }
+        else
+        {
+            Assert.False(sessionRequest.Form.ContainsKey("subscription_data[trial_period_days]"));
+            Assert.False(sessionRequest.Form.ContainsKey("payment_method_collection"));
+            Assert.False(sessionRequest.Form.ContainsKey("subscription_data[trial_settings][end_behavior][missing_payment_method]"));
+            Assert.DoesNotContain("trial=true", sessionRequest.Form["cancel_url"]);
+        }
+        Assert.Equal("subscription", sessionRequest.Form["mode"]);
         Assert.DoesNotContain(handler.Requests, request => request.Method == HttpMethod.Post &&
                                                            request.Path == "/v1/customers");
         var customerSearch = Assert.Single(handler.Requests, request => request.Path == "/v1/customers/search");

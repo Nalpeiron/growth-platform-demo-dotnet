@@ -23,7 +23,7 @@ internal static class ZenmeterAddonSelectionPolicy
         foreach (var tier in pricing.Tiers)
         {
             var plan = tier.Offerings.FirstOrDefault(offering =>
-                offering is { IsVisible: true, IsTrial: false }
+                offering is { IsVisible: true }
                 && string.Equals(offering.Sku, sku, StringComparison.OrdinalIgnoreCase));
             if (plan is not null)
             {

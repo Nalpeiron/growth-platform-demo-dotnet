@@ -212,6 +212,46 @@ Magic API/config strings are parsed at boundaries. Zentitle flow uses `FeatureKi
 
 ## Configuration
 
+### Zenmeter free trials
+
+Enable a 7-, 14-, or 30-day trial on the desired offering in Zenmeter. The demo reads the
+trial duration from the live catalog and uses the same SKU as the paid plan. Keep its normal
+price and billing period configured in the selected billing provider; no separate trial SKU is
+needed. A zero-price offering is not automatically a trial.
+
+Trials start without collecting a payment method by default. To require one at signup, set
+`Billing:Stripe:ZenmeterTrialRequirePaymentMethod` or
+`Billing:FastSpring:ZenmeterTrialRequirePaymentMethod` to `true` independently. These settings
+apply to new Zenmeter trial checkouts. With a saved payment method, the provider can automatically
+charge when the trial ends. FastSpring applies the choice to the checkout session; it does not
+change the product catalog or its reactivation settings.
+
+Choose **Start N-day free trial** on a plan card. Add-ons and top-ups are unavailable during
+trial. **Start paid plan** converts the existing subscription, including when trial credits
+have run out; top-ups become available once conversion completes.
+
+- **Direct/default:** creates and converts the trial through Zenmeter without collecting payment.
+  The trial expires unless converted to paid.
+- **Stripe:** by default, trials start without collecting a card and cancel at expiry if no payment method is added.
+  **Start paid subscription** asks for confirmation, then charges the saved card or opens Stripe Checkout
+  to collect one first. The existing subscription converts only when payment succeeds; abandoning
+  card collection or leaving a conversion invoice unpaid preserves the trial's original end date.
+  **Complete payment** resumes the same checkout or invoice. Once that attempt expires, a new one can be started.
+- **FastSpring:** by default, trials start without collecting a card and expire unless a payment method is added.
+  **Start paid subscription** opens the authenticated FastSpring account portal in a separate window,
+  on **Trials**. Select the trial and choose **Pay now**, then refresh the demo workspace to read the paid state.
+  Opening the portal without paying
+  leaves the trial unchanged. Use a distinct email for each separate demo customer to avoid grouping
+  their subscriptions into the same FastSpring account.
+
+Provider flows wait for payment-driven conversion in Zenmeter; use **Check payment status** if pending.
+
+Provider credentials must allow price catalog reads and subscription reads/updates; FastSpring
+also requires order session creation and account authentication. Billing integrations must support trial
+provisioning and payment-driven conversion. Verify the flow in your provider's test environment.
+For Stripe early conversion, the integration must handle `invoice.paid` with
+`billing_reason=subscription_update` by applying payment to the existing Zenmeter subscription.
+
 ### Local NuGet Package Feed
 
 The `Zenmeter.Consumption.Client` package is restored from the Nalpeiron package registry. For
@@ -331,6 +371,34 @@ Required setup:
    or `checkout.session.async_payment_succeeded` for paid payment-mode sessions.
 4. Configure `Billing:Stripe:SecretKey`, `ZentitleSuccessUrl`, and `ZentitleCancelUrl` in the demo.
 5. Keep the Stripe listener running while testing so Orion can provision asynchronously.
+
+#### Update Stripe Product Prices
+
+With Node.js 20+, sync USD prices from `Zentitle.Prices` or `Zenmeter.Prices` in the selected JSON
+file. Pass your Stripe test secret key and preview first:
+
+```powershell
+node scripts/zentitle/update-stripe-product-prices.js `
+  --appsettings src/NalpeironGrowthPlatformDemo/appsettings.json `
+  --secret-key <test-stripe-secret-key> `
+  --dry-run
+
+node scripts/zenmeter/update-stripe-product-prices.js `
+  --appsettings src/NalpeironGrowthPlatformDemo/appsettings.json `
+  --secret-key <test-stripe-secret-key> `
+  --dry-run
+```
+
+Each SKU needs an existing active, fixed-price USD Stripe Price with a matching `lookup_key`
+and correct billing period. All SKUs are validated before writes; unchanged amounts are skipped.
+Remove `--dry-run` to apply: changed amounts create new Prices, transfer their lookup keys and
+archive the old Prices, updating the product's default Price if needed. Existing subscriptions
+keep their prices; payment links using archived Prices are disabled. Updates across SKUs are
+not transactional. Alternatively, omit `--secret-key` to use `STRIPE_SECRET_KEY` or
+`Billing.Stripe.SecretKey` from the selected file. See `--help` for all options.
+
+To clean up an older run, add `--cleanup-log <file>` with its `Updated SKU: price_OLD -> price_NEW`
+output. This only archives the identified old Prices; it creates no new Prices. Preview with `--dry-run`.
 
 ### Stripe Setup For Zenmeter Checkout
 
@@ -620,8 +688,8 @@ dotnet test NalpeironGrowthPlatformDemo.slnx -p:OutDir=artifacts/test-check/ -v:
 Remove only the generated `artifacts/` directory afterwards. Tests use local fakes and do not
 need a live API connection.
 
-The FastSpring price-update scripts under `scripts/` have their own tests on the Node.js built-in
-test runner. They stub the FastSpring API with a local HTTP server, so they also need no
+The FastSpring and Stripe price-update scripts under `scripts/` have their own tests on the Node.js built-in
+test runner. They stub the provider APIs with local HTTP servers, so they also need no
 credentials or network access:
 
 ```bash

@@ -1,3 +1,4 @@
+using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter.BillingCheckoutProviders;
 using NalpeironGrowthPlatformDemo.Configuration;
@@ -9,6 +10,30 @@ namespace NalpeironGrowthPlatformDemo.Tests.Application.Zenmeter.BillingCheckout
 
 public sealed class NoneBillingCheckoutProviderTests
 {
+    [Fact]
+    public async Task CreateCheckout_WithTrial_CreatesTrialSubscription()
+    {
+        // arrange
+        var zenmeter = new StubZenmeterManagementClient
+        {
+            Subscription = new Zm.SubscriptionModel { Id = "sub-trial" }
+        };
+        var provider = new NoneBillingCheckoutProvider(zenmeter);
+        var checkout = BillingCheckoutTestData.CreateCheckout() with
+        {
+            StartMode = ZenmeterSubscriptionStartMode.Trial,
+            TrialDays = 14
+        };
+
+        // act
+        var result = await provider.CreateCheckout(checkout, CancellationToken.None);
+
+        // assert
+        Assert.Equal(ZenmeterCheckoutStatuses.Completed, result.Status);
+        Assert.Equal(ZenmeterSubscriptionStartMode.Trial, zenmeter.StartMode);
+        Assert.Equal(checkout.Skus, zenmeter.Skus);
+    }
+
     [Fact]
     public async Task CreateCheckout_WithPlanAndAddonSkus_CreatesZenmeterSubscriptionAndCompletes()
     {
@@ -59,6 +84,7 @@ public sealed class NoneBillingCheckoutProviderTests
     private sealed class StubZenmeterManagementClient : UnsupportedZenmeterManagementClient
     {
         public Zm.SubscriptionModel? Subscription { get; init; }
+        public ZenmeterSubscriptionStartMode StartMode { get; private set; }
         public string? CustomerId { get; private set; }
         public IReadOnlyList<string>? Skus { get; private set; }
         public string? OrderRefId { get; private set; }
@@ -67,8 +93,10 @@ public sealed class NoneBillingCheckoutProviderTests
             string customerId,
             IReadOnlyList<string> skus,
             string orderRefId,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid)
         {
+            StartMode = startMode;
             CustomerId = customerId;
             Skus = skus;
             OrderRefId = orderRefId;

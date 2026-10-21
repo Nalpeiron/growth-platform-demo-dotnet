@@ -12,11 +12,13 @@ public sealed class NoneBillingCheckoutProvider(
         ZenmeterPendingCheckout checkout,
         CancellationToken cancellationToken)
     {
+        ZenmeterTrialPolicy.ValidateCheckout(checkout);
         var subscription = await zenmeter.CreateSubscription(
             checkout.CustomerId,
             checkout.Skus,
             checkout.OrderRefId,
-            cancellationToken);
+            cancellationToken,
+            checkout.StartMode);
         if (subscription is null || string.IsNullOrWhiteSpace(subscription.Id))
         {
             throw new InvalidOperationException(

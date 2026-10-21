@@ -18,9 +18,12 @@ public interface IZenmeterManagementClient
         string customerId,
         IReadOnlyList<string> skus,
         string orderRefId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid);
 
     Task<SubscriptionModel?> GetSubscription(string subscriptionId, CancellationToken cancellationToken);
+
+    Task ConvertToPaid(string subscriptionId, CancellationToken cancellationToken);
 
     Task<SubscriptionModel?> LookupSubscription(
         string? orderRefId,
@@ -49,6 +52,9 @@ public interface IZenmeterManagementClient
 
 public sealed class ZenmeterManagementClient(IZenmeterManagementApiGeneratedClient api) : IZenmeterManagementClient
 {
+    public Task ConvertToPaid(string subscriptionId, CancellationToken cancellationToken) =>
+        api.ZenmeterSubscriptions_ConvertToPaidAsync(subscriptionId, cancellationToken);
+
     public Task<CatalogBusinessModelConfigurationModel?> GetBusinessModel(
         string businessModelId,
         CancellationToken cancellationToken) =>
@@ -63,11 +69,17 @@ public sealed class ZenmeterManagementClient(IZenmeterManagementApiGeneratedClie
         string customerId,
         IReadOnlyList<string> skus,
         string orderRefId,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid) =>
         api.ZenmeterSubscriptions_CreateAsync(
             new CreateSubscriptionApiRequest
             {
-                StartMode = SubscriptionStartMode.Paid,
+                StartMode = startMode switch
+                {
+                    ZenmeterSubscriptionStartMode.Paid => SubscriptionStartMode.Paid,
+                    ZenmeterSubscriptionStartMode.Trial => SubscriptionStartMode.Trial,
+                    _ => throw new ArgumentOutOfRangeException(nameof(startMode))
+                },
                 CustomerId = customerId,
                 LineItems = ToLineItems(skus),
                 BillingReference = CreateBillingReference(orderRefId, billingSystem: null)

@@ -20,8 +20,11 @@ internal abstract class UnsupportedZenmeterManagementClient : IZenmeterManagemen
         string customerId,
         IReadOnlyList<string> skus,
         string orderRefId,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid) =>
         throw new NotSupportedException();
+
+    public virtual Task ConvertToPaid(string subscriptionId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
     public virtual Task<Zm.SubscriptionModel?> GetSubscription(
         string subscriptionId,

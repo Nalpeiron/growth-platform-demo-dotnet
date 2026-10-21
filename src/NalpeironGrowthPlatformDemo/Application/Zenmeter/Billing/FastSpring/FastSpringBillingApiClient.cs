@@ -14,6 +14,9 @@ public sealed class FastSpringBillingApiClient(
 {
     private const int PageSize = 100;
 
+    public Task<FastSpringApiResponse> CreateSession(object payload, CancellationToken cancellationToken) =>
+        PostRequest("sessions", payload, cancellationToken);
+
     public async Task<JsonDocument> GetProductPricePage(int page, CancellationToken cancellationToken)
     {
         using var request = CreateRequest(
@@ -75,19 +78,32 @@ public sealed class FastSpringBillingApiClient(
         return new FastSpringApiResponse<JsonDocument>(response.StatusCode, responseBody, Payload: null);
     }
 
+    public async Task<FastSpringApiResponse<JsonDocument>> GetAccountManagementUrl(
+        string accountId, CancellationToken cancellationToken)
+    {
+        using var request = CreateRequest(HttpMethod.Get,
+            $"accounts/{Uri.EscapeDataString(accountId)}/authenticate");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            LogUnsuccessfulResponse("account authentication", response.StatusCode, body);
+        return new FastSpringApiResponse<JsonDocument>(response.StatusCode, body,
+            response.IsSuccessStatusCode ? JsonDocument.Parse(body) : null);
+    }
+
     public async Task<FastSpringApiResponse> UpdateSubscription(
         object payload,
         CancellationToken cancellationToken)
     {
-        return await PostSubscriptionRequest("subscriptions", payload, cancellationToken);
+        return await PostRequest("subscriptions", payload, cancellationToken);
     }
 
     public Task<FastSpringApiResponse> EstimateSubscriptionUpdate(
         object payload,
         CancellationToken cancellationToken) =>
-        PostSubscriptionRequest("subscriptions/estimate", payload, cancellationToken);
+        PostRequest("subscriptions/estimate", payload, cancellationToken);
 
-    private async Task<FastSpringApiResponse> PostSubscriptionRequest(
+    private async Task<FastSpringApiResponse> PostRequest(
         string path,
         object payload,
         CancellationToken cancellationToken)
@@ -102,7 +118,7 @@ public sealed class FastSpringBillingApiClient(
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            LogUnsuccessfulResponse("subscription update", response.StatusCode, responseBody);
+            LogUnsuccessfulResponse(path, response.StatusCode, responseBody);
         }
 
         return new FastSpringApiResponse(response.StatusCode, responseBody);
