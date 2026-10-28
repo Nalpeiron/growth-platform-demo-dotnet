@@ -12,6 +12,7 @@
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Polly" Version="8.8.0" />
         <PackageReference Include="Stripe.net" Version="53.0.0" />
+        <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.14" />
         <PackageReference Include="Zenmeter.Consumption.Client" Version="1.1.0" />
     </ItemGroup>
 
