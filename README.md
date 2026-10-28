@@ -531,6 +531,10 @@ Run either entrypoint with `--help` to list all supported options.
 
 ### Docker Environment
 
+The default base images require access to Nalpeiron's container registry. Authenticate with
+`docker login gitlab.nalpeiron.net:5050` before building. The Dockerfile's `SDK_IMAGE` and
+`RUNTIME_IMAGE` build arguments can override the base images.
+
 Copy `.env.example` to the ignored `.env` file and fill in the tenant-specific values. The same
 ignored root `nuget.config` used for local development is mounted as a build secret while restoring
 packages; it is excluded from the Docker build context and image layers.
