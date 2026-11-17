@@ -29,10 +29,15 @@ public sealed class ZenmeterWorkspaceQuery(
         var featuresTask = consumptionClient.GetFeatures(session.SubscriptionId, cancellationToken);
         var metersTask = consumptionClient.GetMeters(session.SubscriptionId, cancellationToken);
         var usersTask = zenmeter.ListUsers(session.SubscriptionId, cancellationToken);
-        var compatibleAddonsTask = catalog.GetCompatibleAddons(
-            session.PlanSku,
-            session.BillingSystem,
-            cancellationToken);
+        var compatibleAddonsTask = LoadCompatibleAddons();
+
+        async Task<IReadOnlyList<ZenmeterAddonPricing>> LoadCompatibleAddons()
+        {
+            var currentSubscription = await subscriptionTask;
+            return ZenmeterTrialPolicy.IsTrialSubscription(currentSubscription)
+                ? []
+                : await catalog.GetCompatibleAddons(session.PlanSku, session.BillingSystem, cancellationToken);
+        }
 
         await Task.WhenAll(
             pricingTask,

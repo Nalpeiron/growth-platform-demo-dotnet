@@ -85,6 +85,7 @@ public sealed class ZentitleManagementClient(IZentitleManagementApiGeneratedClie
             pageNumber: 1,
             pageSize: 200,
             customerId,
+            customerContactId: null,
             expand: null,
             cancellationToken);
         var matches = groups.Items?

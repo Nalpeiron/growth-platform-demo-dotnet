@@ -20,8 +20,9 @@ public sealed class ZenmeterDemoFacade(
         BillingSystem billingSystem,
         string sku,
         string? addonSku,
-        CancellationToken cancellationToken) =>
-        purchase.GetCheckoutInfo(billingSystem, sku, addonSku, cancellationToken);
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid) =>
+        purchase.GetCheckoutInfo(billingSystem, sku, addonSku, cancellationToken, startMode);
 
     public Task<ZenmeterPurchaseResult> Purchase(
         BillingSystem billingSystem,
@@ -30,8 +31,9 @@ public sealed class ZenmeterDemoFacade(
         string customerName,
         ZenmeterUserInput user,
         string checkoutRequestId,
-        CancellationToken cancellationToken) =>
-        purchase.Purchase(billingSystem, sku, addonSku, customerName, user, checkoutRequestId, cancellationToken);
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid) =>
+        purchase.Purchase(billingSystem, sku, addonSku, customerName, user, checkoutRequestId, cancellationToken, startMode);
 
     public Task<ZenmeterBillingStatus> GetBillingStatus(
         string sessionId,

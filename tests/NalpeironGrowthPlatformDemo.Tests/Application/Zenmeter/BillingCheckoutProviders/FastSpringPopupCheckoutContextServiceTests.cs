@@ -27,6 +27,7 @@ public sealed class FastSpringPopupCheckoutContextServiceTests
             BillingSystem = BillingSystem.FastSpring,
             User = new ZenmeterUserDetails("alex-morgan", "Alex", "Morgan", "alex@acme.test"),
             OrderRefId = "order-1",
+            ProviderCheckoutSessionId = "fs_session_1",
             CheckoutStatus = ZenmeterCheckoutStatuses.Pending
         });
         var service = new FastSpringPopupCheckoutContextService(
@@ -41,6 +42,7 @@ public sealed class FastSpringPopupCheckoutContextServiceTests
 
         // assert
         Assert.NotNull(context);
+        Assert.Equal("fs_session_1", context.ProviderCheckoutSessionId);
         Assert.Equal("store.test/popup", context.Storefront);
         Assert.Equal(["base-sku", "addon-1", "addon-2"], context.ProductPaths);
         Assert.Equal("account-ref-1", context.OrderTags["customer_ref"]);

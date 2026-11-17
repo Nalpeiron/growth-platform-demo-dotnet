@@ -14,6 +14,7 @@ public sealed class ZenmeterDemoSession
     public required string TierKey { get; init; }
     public required string PlanSku { get; init; }
     public required ZenmeterOfferingPeriod Period { get; init; }
+    public ZenmeterSubscriptionStartMode StartMode { get; init; }
     public string? AddonSku { get; init; }
     public string? CustomerId { get; init; }
     public string? CustomerAccountRefId { get; init; }
@@ -26,6 +27,11 @@ public sealed class ZenmeterDemoSession
     public string? ProviderCheckoutSessionId { get; set; }
     public string CheckoutStatus { get; set; } = ZenmeterCheckoutStatuses.Completed;
     public ZenmeterPendingTopUp? PendingTopUp { get; set; }
+    public bool TrialConversionPending { get; set; }
+    public string? TrialConversionRequestId { get; set; }
+    public string? TrialConversionSetupSessionId { get; set; }
+    public string? TrialConversionPaymentUrl { get; set; }
+    public DateTimeOffset? TrialConversionPaymentUrlExpiresAt { get; set; }
     public List<string> Events { get; } = [];
 
     public ZenmeterDemoSessionSnapshot ToSnapshot() =>
@@ -349,7 +355,10 @@ public sealed record ZenmeterWorkspaceView(
     IReadOnlyList<string> Events,
     IReadOnlyList<string> DataIssues,
     string? CustomerUrl,
-    string? SubscriptionUrl);
+    string? SubscriptionUrl)
+{
+    public bool IsTrial { get; init; }
+}
 
 public interface IZenmeterDemo
 {
@@ -357,7 +366,8 @@ public interface IZenmeterDemo
         BillingSystem billingSystem,
         string sku,
         string? addonSku,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid);
 
     Task<ZenmeterPurchaseResult> Purchase(
         BillingSystem billingSystem,
@@ -366,7 +376,8 @@ public interface IZenmeterDemo
         string customerName,
         ZenmeterUserInput user,
         string checkoutRequestId,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid);
 
     Task<ZenmeterBillingStatus> GetBillingStatus(
         string sessionId,

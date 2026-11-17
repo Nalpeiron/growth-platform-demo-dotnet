@@ -1,0 +1,193 @@
+@implements IDisposable
+@using Microsoft.JSInterop
+@inject ZenmeterTrialConversionService Conversion
+@inject ILogger<ZenmeterTrialConversionPanel> Logger
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="mt-5 rounded-lg border border-indigo-100 bg-indigo-50 p-4">
+    <p class="text-sm text-slate-700">Start your paid subscription today to keep creating, unlock credit top-ups, and power your next big idea.</p>
+    @if (_usesAccountPortal)
+    {
+        <p class="mt-3 text-sm text-slate-600">In the FastSpring window, select your trial under Trials and choose Pay now. After paying, refresh this workspace.</p>
+    }
+    @if (_pending)
+    {
+        <p class="mt-3 text-sm text-slate-600" role="status">@(_usesAccountPortal && _paymentUrl is not null ? "Your trial stays unchanged until payment is confirmed." : _paymentUrl is null ? _pendingMessage : "Complete payment, then check its status here.")</p>
+        @if (_paymentUrl is not null)
+        {
+            <a href="@_paymentUrl" target="@(LocalRedirectGuard.IsSafeLocalPath(_paymentUrl) ? "_self" : "_blank")" rel="noopener" class="mt-3 inline-block font-semibold text-indigo-700">@(_usesAccountPortal ? "Open FastSpring" : "Complete payment") &nearr;</a>
+        }
+    }
+    @if (_error is not null)
+    {
+        <p class="mt-3 text-sm text-amber-800" role="alert">@_error</p>
+    }
+    <div class="mt-4">
+        <SpinnerButton OnClick="StartAsync" Busy="_busy" Disabled="IsBusy"
+                       data-zenmeter-trial-portal="@(_usesAccountPortal && !_pending ? "true" : null)"
+                       Label="@(_pending ? "Check payment status" : "Start paid subscription")" BusyLabel="Checking..."/>
+    </div>
+</div>
+
+@if (_confirmation is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="trial-conversion-title" class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h2 id="trial-conversion-title" class="text-xl font-bold text-slate-900">Start paid subscription</h2>
+            <p class="mt-3 text-sm text-slate-600">@_confirmation</p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" class="rounded-lg border px-4 py-2 text-sm font-semibold" @onclick="CancelConfirmation">Cancel</button>
+                <SpinnerButton OnClick="ConfirmAsync" Label="Confirm and start" Busy="_busy" Disabled="IsBusy"/>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string SessionId { get; set; } = null!;
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public EventCallback OnConverted { get; set; }
+    [Parameter] public EventCallback<bool> OnBusyChanged { get; set; }
+
+    private readonly CancellationTokenSource _disposal = new();
+    private bool _busy;
+    private bool _pending;
+    private bool _usesAccountPortal;
+    private string? _confirmation;
+    private string? _error;
+    private string? _paymentUrl;
+    private string _pendingMessage = "Waiting for payment confirmation and your paid plan. Credits remain unchanged until payment is confirmed.";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await RunAsync(checkOnly: true);
+    }
+
+    private Task StartAsync() => RunAsync(checkOnly: _pending);
+    private Task ConfirmAsync() => RunAsync(confirmed: true);
+    private void CancelConfirmation() => _confirmation = null;
+
+    private async Task RunAsync(bool checkOnly = false, bool confirmed = false)
+    {
+        if (_busy || IsBusy)
+            return;
+
+        _busy = true;
+        var opensPortal = _usesAccountPortal && !checkOnly;
+        _error = null;
+        _confirmation = null;
+        await OnBusyChanged.InvokeAsync(true);
+        try
+        {
+            var result = checkOnly
+                ? await Conversion.GetStatus(SessionId, _disposal.Token)
+                : await Conversion.Start(SessionId, confirmed, _disposal.Token);
+            if (!await ApplyAsync(result) || !result.Pending)
+                return;
+
+            if (_usesAccountPortal)
+            {
+                if (!checkOnly)
+                    await OpenPaymentAsync(result.PaymentUrl);
+                return;
+            }
+
+            if (!checkOnly && await OpenPaymentAsync(result.PaymentUrl))
+                return;
+            // Waiting for the buyer to enter a card or pay is not provisioning work.
+            // Keep the workspace usable and let the buyer resume through the payment link.
+            if (result.PaymentUrl is not null)
+                return;
+
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(Conversion.TimeoutSeconds);
+            while (DateTimeOffset.UtcNow < deadline)
+            {
+                StateHasChanged();
+                await Task.Delay(TimeSpan.FromSeconds(Conversion.PollIntervalSeconds), _disposal.Token);
+                result = await Conversion.GetStatus(SessionId, _disposal.Token);
+                if (!await ApplyAsync(result) || !result.Pending)
+                    return;
+                if (!checkOnly && await OpenPaymentAsync(result.PaymentUrl))
+                    return;
+                if (result.PaymentUrl is not null)
+                    return;
+            }
+            _pendingMessage = "Payment or provisioning is still pending. You can check again without starting another charge. If payment failed, update your payment method with the provider.";
+        }
+        catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Could not refresh workspace after trial conversion");
+            _error = "Your paid plan may already be active, but the workspace could not be refreshed. Please try again.";
+        }
+        finally
+        {
+            _busy = false;
+            if (opensPortal)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("nalpeironTrialPortal.cancel");
+                }
+                catch (JSDisconnectedException)
+                {
+                }
+            }
+            if (!_disposal.IsCancellationRequested)
+            {
+                await OnBusyChanged.InvokeAsync(false);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task<bool> OpenPaymentAsync(string? url)
+    {
+        if (!LocalRedirectGuard.IsSafeLocalPath(url)
+            && !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https"))
+            return false;
+
+        if (_usesAccountPortal)
+        {
+            // The browser reserves a window on the click, before the server prepares its URL.
+            // If blocked, the Open FastSpring link remains available. Refresh reads the paid state.
+            await JS.InvokeAsync<bool>("nalpeironTrialPortal.navigate", url);
+            return false;
+        }
+
+        Navigation.NavigateTo(url!, forceLoad: true);
+        return true;
+    }
+
+    private async Task<bool> ApplyAsync(ZenmeterTrialConversionResult result)
+    {
+        if (!result.Action.Succeeded)
+        {
+            _error = result.Action.Message;
+            // An uncertain response may have started billing. The next click reads status first.
+            _pending = result.Pending;
+            return false;
+        }
+        _pending = result.Pending;
+        _usesAccountPortal = result.UsesAccountPortal;
+        _paymentUrl = result.PaymentUrl;
+        _confirmation = result.Confirmation;
+        if (result.Completed)
+        {
+            await OnBusyChanged.InvokeAsync(false);
+            await OnConverted.InvokeAsync();
+            return false;
+        }
+        return true;
+    }
+
+    public void Dispose()
+    {
+        _disposal.Cancel();
+        _disposal.Dispose();
+    }
+}

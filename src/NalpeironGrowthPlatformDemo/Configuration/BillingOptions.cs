@@ -72,6 +72,7 @@ public sealed class StripeBillingOptions
     public string SecretKey { get; set; } = "";
     public string ZenmeterSuccessUrl { get; set; } = "";
     public string ZenmeterCancelUrl { get; set; } = "";
+    public bool ZenmeterTrialRequirePaymentMethod { get; set; } = false;
     public string ZentitleSuccessUrl { get; set; } = "";
     public string ZentitleCancelUrl { get; set; } = "";
 }
@@ -80,6 +81,7 @@ public sealed class FastSpringBillingOptions
 {
     public string ApiUrl { get; set; } = "https://api.fastspring.com";
     public string ZenmeterStorefrontUrl { get; set; } = "";
+    public bool ZenmeterTrialRequirePaymentMethod { get; set; } = false;
     public string ZentitleStorefrontUrl { get; set; } = "";
     public string ApiUsername { get; set; } = "";
     public string ApiPassword { get; set; } = "";

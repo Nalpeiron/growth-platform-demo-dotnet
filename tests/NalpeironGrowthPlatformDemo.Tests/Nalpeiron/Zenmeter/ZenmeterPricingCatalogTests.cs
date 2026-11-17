@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using NalpeironGrowthPlatformDemo.Application.Shared.Billing;
 using NalpeironGrowthPlatformDemo.Configuration;
 using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
@@ -10,6 +13,85 @@ namespace NalpeironGrowthPlatformDemo.Tests.Nalpeiron.Zenmeter;
 
 public sealed class ZenmeterPricingCatalogTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData((Zm.TrialDuration)999)]
+    public async Task GetPricing_WithInvalidTrialDuration_KeepsPaidCatalogAndLogsWarning(Zm.TrialDuration? duration)
+    {
+        // arrange
+        var model = BusinessModel();
+        var offerings = model.Tiers.First().Offerings.ToList();
+        offerings[0].TrialConfiguration = new() { Enabled = true, Duration = duration };
+        offerings[1].TrialConfiguration = new() { Enabled = true, Duration = Zm.TrialDuration._14d };
+        var options = new ZenmeterOptions
+        {
+            BusinessModelId = "bm-1",
+            Prices =
+            {
+                [offerings[0].Sku] = new ZenmeterPriceOptions { Price = 149 },
+                [offerings[1].Sku] = new ZenmeterPriceOptions { Price = 1490 }
+            }
+        };
+        var logger = new Mock<ILogger<ZenmeterPricingCatalog>>();
+        var catalog = new ZenmeterPricingCatalog(new StubZenmeterManagementClient { BusinessModel = model },
+            Options.Create(options), CreateStaticPriceResolver(options), logger.Object);
+
+        // act
+        var pricing = await catalog.GetPricing(CancellationToken.None);
+        var shell = await catalog.GetPricingShell(CancellationToken.None);
+
+        // assert
+        foreach (var result in new[] { pricing, shell })
+        {
+            var plans = result.Tiers.Single().Offerings;
+            Assert.Equal(2, plans.Count);
+            Assert.Null(plans[0].TrialDays);
+            Assert.True(plans[0].IsVisible);
+            Assert.Equal(14, plans[1].TrialDays);
+        }
+        Assert.Equal(149, pricing.Tiers.Single().Offerings[0].Price);
+        logger.Verify(x => x.Log(LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((value, _) => value.ToString()!.Contains(offerings[0].Sku)),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Exactly(2));
+    }
+
+    [Theory]
+    [InlineData(true, Zm.TrialDuration._7d, 7)]
+    [InlineData(true, Zm.TrialDuration._14d, 14)]
+    [InlineData(true, Zm.TrialDuration._30d, 30)]
+    [InlineData(false, null, null)]
+    public async Task GetPricing_WithTrialConfiguration_PreservesPlanAndMapsTrialDays(
+        bool enabled, Zm.TrialDuration? duration, int? expectedDays)
+    {
+        // arrange
+        var model = BusinessModel();
+        var offering = model.Tiers.First().Offerings.First();
+        offering.TrialConfiguration = new Zm.OfferingTrialConfigurationModel
+        {
+            Enabled = enabled,
+            Duration = duration
+        };
+        var options = new ZenmeterOptions
+        {
+            BusinessModelId = "bm-1",
+            Prices = { ["elevate-saas-scale-monthly"] = new ZenmeterPriceOptions { Price = 149 } }
+        };
+        var catalog = new ZenmeterPricingCatalog(
+            new StubZenmeterManagementClient { BusinessModel = model },
+            Options.Create(options), CreateStaticPriceResolver(options), NullLogger<ZenmeterPricingCatalog>.Instance);
+
+        // act
+        var pricing = await catalog.GetPricing(CancellationToken.None);
+
+        // assert
+        var plan = pricing.Tiers.Single().Offerings.First();
+        Assert.Equal(expectedDays, plan.TrialDays);
+        Assert.Equal(offering.Sku, plan.Sku);
+        Assert.Equal(ZenmeterOfferingPeriod.Monthly, plan.Period);
+        Assert.Equal(149, plan.Price);
+        Assert.True(plan.IsVisible);
+    }
+
     [Fact]
     public async Task GetPricing_WithConfiguredSkuPrices_MapsPricingFromTheBusinessModel()
     {
@@ -31,7 +113,7 @@ public sealed class ZenmeterPricingCatalogTests
         var catalog = new ZenmeterPricingCatalog(
             client,
             Options.Create(options),
-            CreateStaticPriceResolver(options));
+            CreateStaticPriceResolver(options), NullLogger<ZenmeterPricingCatalog>.Instance);
 
         // act
         var pricing = await catalog.GetPricing(CancellationToken.None);
@@ -91,7 +173,7 @@ public sealed class ZenmeterPricingCatalogTests
         var catalog = new ZenmeterPricingCatalog(
             client,
             Options.Create(options),
-            CreateStaticPriceResolver(options));
+            CreateStaticPriceResolver(options), NullLogger<ZenmeterPricingCatalog>.Instance);
 
         // act
         var pricing = await catalog.GetPricing(CancellationToken.None);
@@ -120,7 +202,7 @@ public sealed class ZenmeterPricingCatalogTests
         var catalog = new ZenmeterPricingCatalog(
             client,
             Options.Create(options),
-            new ThrowingBillingPriceResolver());
+            new ThrowingBillingPriceResolver(), NullLogger<ZenmeterPricingCatalog>.Instance);
 
         // act
         var pricing = await catalog.GetPricingShell(CancellationToken.None);
@@ -177,7 +259,7 @@ public sealed class ZenmeterPricingCatalogTests
                             ["elevate-saas-scale-yearly"] = new("elevate-saas-scale-yearly", 2220)
                         })
                 ],
-                Options.Create(new BillingOptions { DefaultBillingSystem = BillingSystem.Stripe })));
+                Options.Create(new BillingOptions { DefaultBillingSystem = BillingSystem.Stripe })), NullLogger<ZenmeterPricingCatalog>.Instance);
 
         // act
         var pricing = await catalog.GetPricing(BillingSystem.Stripe, CancellationToken.None);
@@ -220,7 +302,7 @@ public sealed class ZenmeterPricingCatalogTests
         var catalog = new ZenmeterPricingCatalog(
             client,
             Options.Create(options),
-            CreateStaticPriceResolver(options));
+            CreateStaticPriceResolver(options), NullLogger<ZenmeterPricingCatalog>.Instance);
 
         // act
         var addons = await catalog.GetCompatibleAddons("elevate-saas-scale-monthly", CancellationToken.None);
@@ -281,7 +363,7 @@ public sealed class ZenmeterPricingCatalogTests
         var catalog = new ZenmeterPricingCatalog(
             client,
             Options.Create(options),
-            CreateStaticPriceResolver(options));
+            CreateStaticPriceResolver(options), NullLogger<ZenmeterPricingCatalog>.Instance);
 
         // act
         var addons = await catalog.GetCompatibleAddons("elevate-saas-scale-monthly", CancellationToken.None);
@@ -311,7 +393,7 @@ public sealed class ZenmeterPricingCatalogTests
         var catalog = new ZenmeterPricingCatalog(
             client,
             Options.Create(options),
-            new ThrowingBillingPriceResolver());
+            new ThrowingBillingPriceResolver(), NullLogger<ZenmeterPricingCatalog>.Instance);
 
         // act
         var addons = await catalog.GetCompatibleAddonShell("elevate-saas-scale-monthly", CancellationToken.None);
@@ -592,8 +674,11 @@ public sealed class ZenmeterPricingCatalogTests
             string customerId,
             IReadOnlyList<string> skus,
             string orderRefId,
-            CancellationToken cancellationToken) =>
+            CancellationToken cancellationToken,
+            ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid) =>
             throw new NotSupportedException();
+
+        public Task ConvertToPaid(string subscriptionId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<Zm.SubscriptionModel?> GetSubscription(
             string subscriptionId,

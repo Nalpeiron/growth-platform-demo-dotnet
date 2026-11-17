@@ -103,6 +103,13 @@ public sealed class ZenmeterTopUpService(
                         session.SubscriptionId,
                         cancellationToken);
 
+                    if (ZenmeterTrialPolicy.IsTrialSubscription(subscription))
+                    {
+                        return BillingTopUpResults.Failure(
+                            "trial_top_up_unavailable",
+                            "Top-ups are available after the trial converts to a paid subscription.");
+                    }
+
                     return await purchaseProvider.Purchase(
                         new BillingTopUpPurchaseContext(
                             session,

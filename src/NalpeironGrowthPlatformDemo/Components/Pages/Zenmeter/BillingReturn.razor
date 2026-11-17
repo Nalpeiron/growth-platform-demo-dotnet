@@ -3,6 +3,7 @@
 @inject IZenmeterDemo Demo
 @inject NavigationManager Nav
 @inject BrowserStorage Storage
+@inject ZenmeterTrialConversionService TrialConversionService
 
 <PageTitle>Nalpeiron Growth Platform Demo Account - Billing Return</PageTitle>
 
@@ -25,12 +26,13 @@
     [SupplyParameterFromQuery] public string? ProviderOrderRefId { get; set; }
     [SupplyParameterFromQuery] public string? ProviderSubscriptionRefId { get; set; }
     [SupplyParameterFromQuery] public string? TopUpOperationId { get; set; }
+    [SupplyParameterFromQuery] public bool TrialConversion { get; set; }
 
     private string _message = "Waiting for Zenmeter provisioning to complete.";
     private string? _error;
     private readonly CancellationTokenSource _disposalCts = new();
 
-    private string Eyebrow => string.IsNullOrWhiteSpace(TopUpOperationId)
+    private string Eyebrow => TrialConversion ? "Trial conversion" : string.IsNullOrWhiteSpace(TopUpOperationId)
         ? "Payment received"
         : "Top-up in progress";
 
@@ -56,6 +58,22 @@
             }
 
             await Storage.SetAsync(SessionStorageKey.Zenmeter, sessionId);
+            if (TrialConversion)
+            {
+                // The URL is not proof of payment. The service reads the stored Checkout
+                // Session and verifies its customer, subscription and successful SetupIntent.
+                var conversion = await TrialConversionService.GetStatus(sessionId, cancellationToken);
+                if (!conversion.Action.Succeeded)
+                {
+                    _error = conversion.Action.Message;
+                    _message = "Return to your workspace to check the trial conversion.";
+                    StateHasChanged();
+                    return;
+                }
+                Nav.NavigateTo(conversion.PaymentUrl ?? DemoRoutes.ZenmeterWorkspace,
+                    forceLoad: conversion.PaymentUrl is not null);
+                return;
+            }
             if (!string.IsNullOrWhiteSpace(TopUpOperationId))
             {
                 await WaitForTopUp(sessionId, TopUpOperationId, cancellationToken);

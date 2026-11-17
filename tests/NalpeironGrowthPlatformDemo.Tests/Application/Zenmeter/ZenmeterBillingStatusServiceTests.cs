@@ -183,7 +183,7 @@ public sealed class ZenmeterBillingStatusServiceTests
             zenmeter,
             store,
             new ZenmeterSubscriptionUserProvisioner(zenmeter),
-            checkoutService ?? new BillingCheckoutService([new FastSpringBillingCheckoutProvider(Options.Create(new BillingOptions()))], Options.Create(new BillingOptions())),
+            checkoutService ?? new BillingCheckoutService([new FastSpringBillingCheckoutProvider(Options.Create(new BillingOptions()), Moq.Mock.Of<NalpeironGrowthPlatformDemo.Application.Zenmeter.Billing.FastSpring.IFastSpringBillingApiClient>())], Options.Create(new BillingOptions())),
             Options.Create(new BillingOptions
             {
                 ProvisioningPoll = new ProvisioningPollOptions

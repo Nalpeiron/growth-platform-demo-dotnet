@@ -24,9 +24,12 @@
             <PricingTierCard Tier="tier" MeterUnitPluralName="@Pricing.MeterUnitPluralName"
                              Period="@Period"
                              Selected="@(string.Equals(SelectedTierKey, tier.Key, StringComparison.OrdinalIgnoreCase))"
+                             StartTrial="StartTrial"
+                             ReserveTrialSpace="HasTrialForPeriod"
                              PriceLoading="@TierPricesLoading"
                              PriceLoadFailed="@TierPricesFailed"
-                             OnSelect="TierSelected"/>
+                             OnSelect="TierSelected"
+                             OnSelectTrial="TrialTierSelected"/>
         }
     </div>
 </section>
@@ -34,11 +37,16 @@
 @code {
     [Parameter, EditorRequired] public ZenmeterCatalogPricing Pricing { get; set; } = default!;
     [Parameter] public string? SelectedTierKey { get; set; }
+    [Parameter] public bool StartTrial { get; set; }
     [Parameter] public ZenmeterOfferingPeriod Period { get; set; } = ZenmeterOfferingPeriod.Monthly;
     [Parameter] public bool TierPricesLoading { get; set; }
     [Parameter] public bool TierPricesFailed { get; set; }
     [Parameter, EditorRequired] public EventCallback<ZenmeterOfferingPeriod> PeriodChanged { get; set; }
     [Parameter, EditorRequired] public EventCallback<string> TierSelected { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string> TrialTierSelected { get; set; }
+
+    private bool HasTrialForPeriod => Pricing.Tiers.Any(tier => tier.Offerings.Any(offering =>
+        offering.IsVisible && offering.Period == Period && offering.TrialDays is not null));
 
     private string PeriodClass(ZenmeterOfferingPeriod period) =>
         Period == period

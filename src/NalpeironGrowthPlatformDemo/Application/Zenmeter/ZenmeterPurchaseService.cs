@@ -20,7 +20,8 @@ public sealed class ZenmeterPurchaseService(
         BillingSystem billingSystem,
         string sku,
         string? addonSku,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid)
     {
         if (billingCheckoutService.ConfigurationUnavailableReason(billingSystem) is { } unavailableReason)
         {
@@ -45,6 +46,25 @@ public sealed class ZenmeterPurchaseService(
         }
 
         var (tier, plan) = located;
+        if (ZenmeterTrialPolicy.UnavailableReason(plan, startMode, addonSku) is { } trialError)
+        {
+            return new ZenmeterCheckoutInfo(tier.Name, "Trial unavailable", false, trialError);
+        }
+
+        if (startMode == ZenmeterSubscriptionStartMode.Trial)
+        {
+            var afterTrial = billingSystem switch
+            {
+                BillingSystem.None => "The trial expires unless converted to a paid subscription.",
+                BillingSystem.FastSpring or BillingSystem.Stripe => "No card required. The trial expires unless you start a paid plan.",
+                _ => $"Then ${plan.Price}, {plan.BillingLabel}. Payment details are collected at checkout."
+            };
+            return new ZenmeterCheckoutInfo(
+                tier.Name,
+                $"{plan.TrialDays}-day free trial. $0 due today. {afterTrial}",
+                true, null);
+        }
+
         var compatibleAddons = priceBook is not null
             ? await catalog.GetCompatibleAddons(plan.Sku, priceBook, cancellationToken)
             : await catalog.GetCompatibleAddons(plan.Sku, billingSystem, cancellationToken);
@@ -76,7 +96,8 @@ public sealed class ZenmeterPurchaseService(
         string customerName,
         ZenmeterUserInput user,
         string checkoutRequestId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ZenmeterSubscriptionStartMode startMode = ZenmeterSubscriptionStartMode.Paid)
     {
         if (string.IsNullOrWhiteSpace(customerName))
         {
@@ -109,7 +130,14 @@ public sealed class ZenmeterPurchaseService(
         }
 
         var (tier, plan) = located;
-        var compatibleAddons = priceBook is not null
+        if (ZenmeterTrialPolicy.UnavailableReason(plan, startMode, addonSku) is { } trialError)
+        {
+            return new ZenmeterPurchaseResult(null, trialError);
+        }
+
+        var compatibleAddons = startMode == ZenmeterSubscriptionStartMode.Trial
+            ? []
+            : priceBook is not null
             ? await catalog.GetCompatibleAddons(plan.Sku, priceBook, cancellationToken)
             : await catalog.GetCompatibleAddons(plan.Sku, billingSystem, cancellationToken);
         var selection = ZenmeterAddonSelectionPolicy.SelectAddons(
@@ -145,7 +173,8 @@ public sealed class ZenmeterPurchaseService(
                 normalizedUser,
                 tier,
                 plan,
-                selection.Selected);
+                selection.Selected,
+                startMode);
 
             session.Events.Add($"Created customer {customer.Id}.");
             var checkout = new ZenmeterPendingCheckout(
@@ -155,7 +184,15 @@ public sealed class ZenmeterPurchaseService(
                 customer.AccountRefId,
                 normalizedUser,
                 orderRefId,
-                skus);
+                skus)
+            {
+                StartMode = startMode,
+                TrialDays = startMode == ZenmeterSubscriptionStartMode.Trial ? plan.TrialDays : null
+            };
+            if (startMode == ZenmeterSubscriptionStartMode.Trial)
+            {
+                session.Events.Add($"Starting a {plan.TrialDays}-day free trial.");
+            }
 
             var checkoutResult = await billingCheckoutService.CreateCheckout(
                 billingSystem,
@@ -210,7 +247,8 @@ public sealed class ZenmeterPurchaseService(
         ZenmeterUserDetails user,
         ZenmeterTierPricing tier,
         ZenmeterOfferingPricing plan,
-        IReadOnlyList<ZenmeterAddonPricing> selectedAddons) =>
+        IReadOnlyList<ZenmeterAddonPricing> selectedAddons,
+        ZenmeterSubscriptionStartMode startMode) =>
         new()
         {
             SessionId = $"zmsess_{Guid.NewGuid():N}",
@@ -218,6 +256,7 @@ public sealed class ZenmeterPurchaseService(
             TierKey = tier.Key,
             PlanSku = plan.Sku,
             Period = plan.Period,
+            StartMode = startMode,
             AddonSku = selectedAddons.Count == 0
                 ? null
                 : string.Join(",", selectedAddons.Select(addon => addon.Sku)),

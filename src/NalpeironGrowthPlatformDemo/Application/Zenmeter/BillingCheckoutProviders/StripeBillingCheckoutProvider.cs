@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
 using NalpeironGrowthPlatformDemo.Configuration;
 using NalpeironGrowthPlatformDemo.Application.Shared.Billing.Stripe;
 using NalpeironGrowthPlatformDemo.Components;
@@ -90,6 +91,7 @@ public sealed class StripeBillingCheckoutProvider(
             throw new InvalidOperationException(unavailableReason);
         }
 
+        ZenmeterTrialPolicy.ValidateCheckout(checkout);
         var priceIds = await GetPriceIdsBySku(checkout.Skus, cancellationToken);
         return await CreateCheckoutSession(checkout, priceIds, cancellationToken);
     }
@@ -142,6 +144,9 @@ public sealed class StripeBillingCheckoutProvider(
                 CancelUrl = BuildCancelUrl(stripe.ZenmeterCancelUrl, checkout),
                 ClientReferenceId = checkout.SessionId,
                 Customer = stripeCustomerId,
+                PaymentMethodCollection = checkout.StartMode == ZenmeterSubscriptionStartMode.Trial
+                    ? stripe.ZenmeterTrialRequirePaymentMethod ? "always" : "if_required"
+                    : null,
                 LineItems = priceIds
                     .Select(priceId => new SessionLineItemOptions
                     {
@@ -154,6 +159,13 @@ public sealed class StripeBillingCheckoutProvider(
                     ? new SessionSubscriptionDataOptions
                     {
                         Metadata = metadata,
+                        TrialPeriodDays = checkout.TrialDays,
+                        TrialSettings = checkout.StartMode == ZenmeterSubscriptionStartMode.Trial
+                            ? new SessionSubscriptionDataTrialSettingsOptions
+                            {
+                                EndBehavior = new() { MissingPaymentMethod = "cancel" }
+                            }
+                            : null,
                         BillingMode = new SessionSubscriptionDataBillingModeOptions { Type = StripeBillingModes.Classic }
                     }
                     : null
@@ -225,6 +237,11 @@ public sealed class StripeBillingCheckoutProvider(
         // (.../elevate/saas/stripe/checkout), so only the sku/addonSku need to be appended here.
         var separator = url.Contains('?', StringComparison.Ordinal) ? "&" : "?";
         var query = new List<string> { $"sku={Uri.EscapeDataString(checkout.Skus[0])}" };
+        if (checkout.StartMode == ZenmeterSubscriptionStartMode.Trial)
+        {
+            query.Add("trial=true");
+        }
+
         if (checkout.Skus.Count > 1)
         {
             query.Add($"addonSku={Uri.EscapeDataString(string.Join(',', checkout.Skus.Skip(1)))}");

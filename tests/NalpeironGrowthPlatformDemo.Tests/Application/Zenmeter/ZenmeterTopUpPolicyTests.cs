@@ -233,7 +233,6 @@ public sealed class ZenmeterTopUpPolicyTests
         new(
             ZenmeterOfferingPeriod.Monthly,
             "elevate-saas-scale-monthly",
-            IsTrial: false,
             IsVisible: true,
             Price: 149,
             BillingLabel: "per month");

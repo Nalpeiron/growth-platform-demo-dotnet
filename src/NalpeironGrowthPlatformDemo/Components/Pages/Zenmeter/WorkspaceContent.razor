@@ -70,7 +70,8 @@
         }
 
         <div class="mt-10 grid gap-8 lg:grid-cols-3">
-            <ZenmeterSubscriptionSummary View="_view"/>
+            <ZenmeterSubscriptionSummary View="_view" SessionId="@(_sessionId!)" IsBusy="IsBusy"
+                                         OnConverted="LoadAsync" OnBusyChanged="SetTrialBusy"/>
 
             <ZenmeterActiveAddonsPanel Addons="_view.ActiveAddons"/>
 
@@ -115,7 +116,9 @@ else if (!_loaded)
     // App.razor pending-button and live-cost JavaScript.
     private string? _busy;
 
-    private bool IsBusy => _busy is not null;
+    private bool _trialBusy;
+    private bool IsBusy => _busy is not null || _trialBusy;
+    private void SetTrialBusy(bool busy) => _trialBusy = busy;
 
     // The session id lives in localStorage, reachable only via JS interop once the component is
     // interactive — hence OnAfterRenderAsync rather than OnInitializedAsync.
@@ -274,6 +277,8 @@ else if (!_loaded)
         message =
             $"{feature.Name} needs {FormatQuantity(required)} {UnitLabel(required, feature.MeterUnitName, feature.MeterUnitPluralName)}, "
             + $"but only {FormatQuantity(meter.Available)} {UnitLabel(meter.Available, feature.MeterUnitName, feature.MeterUnitPluralName)} are available.";
+        if (_view?.IsTrial == true)
+            message += " Select Start paid plan in the Subscription panel to end the trial and continue.";
         return true;
     }
 

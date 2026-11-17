@@ -1388,11 +1388,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
         /// <param name="pageNumber">Requested page number</param>
         /// <param name="pageSize">Maximum number of items per page</param>
         /// <param name="customerId">Customer identifier</param>
+        /// <param name="customerContactId">Identifier of a customer contact assigned to the entitlement group</param>
         /// <param name="productId">Product identifier</param>
         /// <param name="expand">Expand configuration</param>
         /// <returns>List of entitlement objects matching selected criteria.</returns>
         /// <exception cref="ZentitleManagementApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PaginatedListOfEntitlementListModel> Entitlements_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? productId, string? expand);
+        System.Threading.Tasks.Task<PaginatedListOfEntitlementListModel> Entitlements_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? customerContactId, string? productId, string? expand);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1404,11 +1405,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
         /// <param name="pageNumber">Requested page number</param>
         /// <param name="pageSize">Maximum number of items per page</param>
         /// <param name="customerId">Customer identifier</param>
+        /// <param name="customerContactId">Identifier of a customer contact assigned to the entitlement group</param>
         /// <param name="productId">Product identifier</param>
         /// <param name="expand">Expand configuration</param>
         /// <returns>List of entitlement objects matching selected criteria.</returns>
         /// <exception cref="ZentitleManagementApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PaginatedListOfEntitlementListModel> Entitlements_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? productId, string? expand, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedListOfEntitlementListModel> Entitlements_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? customerContactId, string? productId, string? expand, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Get entitlement
@@ -2215,10 +2217,11 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
         /// <param name="pageNumber">Requested page number</param>
         /// <param name="pageSize">Maximum number of items per page</param>
         /// <param name="customerId">Customer identifier</param>
+        /// <param name="customerContactId">Identifier of a customer contact assigned to the entitlement group</param>
         /// <param name="expand">Expand configuration</param>
         /// <returns>List of entitlement groups objects matching selected criteria.</returns>
         /// <exception cref="ZentitleManagementApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PaginatedListOfEntitlementGroupListModel> EntitlementGroup_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? expand);
+        System.Threading.Tasks.Task<PaginatedListOfEntitlementGroupListModel> EntitlementGroup_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? customerContactId, string? expand);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -2231,10 +2234,11 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
         /// <param name="pageNumber">Requested page number</param>
         /// <param name="pageSize">Maximum number of items per page</param>
         /// <param name="customerId">Customer identifier</param>
+        /// <param name="customerContactId">Identifier of a customer contact assigned to the entitlement group</param>
         /// <param name="expand">Expand configuration</param>
         /// <returns>List of entitlement groups objects matching selected criteria.</returns>
         /// <exception cref="ZentitleManagementApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<PaginatedListOfEntitlementGroupListModel> EntitlementGroup_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? expand, System.Threading.CancellationToken cancellationToken);
+        System.Threading.Tasks.Task<PaginatedListOfEntitlementGroupListModel> EntitlementGroup_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? customerContactId, string? expand, System.Threading.CancellationToken cancellationToken);
 
         /// <summary>
         /// Get an entitlement group
@@ -12862,13 +12866,14 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
         /// <param name="pageNumber">Requested page number</param>
         /// <param name="pageSize">Maximum number of items per page</param>
         /// <param name="customerId">Customer identifier</param>
+        /// <param name="customerContactId">Identifier of a customer contact assigned to the entitlement group</param>
         /// <param name="productId">Product identifier</param>
         /// <param name="expand">Expand configuration</param>
         /// <returns>List of entitlement objects matching selected criteria.</returns>
         /// <exception cref="ZentitleManagementApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PaginatedListOfEntitlementListModel> Entitlements_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? productId, string? expand)
+        public virtual System.Threading.Tasks.Task<PaginatedListOfEntitlementListModel> Entitlements_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? customerContactId, string? productId, string? expand)
         {
-            return Entitlements_GetListAsync(pageNumber, pageSize, customerId, productId, expand, System.Threading.CancellationToken.None);
+            return Entitlements_GetListAsync(pageNumber, pageSize, customerId, customerContactId, productId, expand, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -12881,11 +12886,12 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
         /// <param name="pageNumber">Requested page number</param>
         /// <param name="pageSize">Maximum number of items per page</param>
         /// <param name="customerId">Customer identifier</param>
+        /// <param name="customerContactId">Identifier of a customer contact assigned to the entitlement group</param>
         /// <param name="productId">Product identifier</param>
         /// <param name="expand">Expand configuration</param>
         /// <returns>List of entitlement objects matching selected criteria.</returns>
         /// <exception cref="ZentitleManagementApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PaginatedListOfEntitlementListModel> Entitlements_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? productId, string? expand, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedListOfEntitlementListModel> Entitlements_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? customerContactId, string? productId, string? expand, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -12912,6 +12918,10 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
                     if (customerId != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("customerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(customerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (customerContactId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("customerContactId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(customerContactId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (productId != null)
                     {
@@ -17798,12 +17808,13 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
         /// <param name="pageNumber">Requested page number</param>
         /// <param name="pageSize">Maximum number of items per page</param>
         /// <param name="customerId">Customer identifier</param>
+        /// <param name="customerContactId">Identifier of a customer contact assigned to the entitlement group</param>
         /// <param name="expand">Expand configuration</param>
         /// <returns>List of entitlement groups objects matching selected criteria.</returns>
         /// <exception cref="ZentitleManagementApiException">A server side error occurred.</exception>
-        public virtual System.Threading.Tasks.Task<PaginatedListOfEntitlementGroupListModel> EntitlementGroup_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? expand)
+        public virtual System.Threading.Tasks.Task<PaginatedListOfEntitlementGroupListModel> EntitlementGroup_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? customerContactId, string? expand)
         {
-            return EntitlementGroup_GetListAsync(pageNumber, pageSize, customerId, expand, System.Threading.CancellationToken.None);
+            return EntitlementGroup_GetListAsync(pageNumber, pageSize, customerId, customerContactId, expand, System.Threading.CancellationToken.None);
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
@@ -17817,10 +17828,11 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
         /// <param name="pageNumber">Requested page number</param>
         /// <param name="pageSize">Maximum number of items per page</param>
         /// <param name="customerId">Customer identifier</param>
+        /// <param name="customerContactId">Identifier of a customer contact assigned to the entitlement group</param>
         /// <param name="expand">Expand configuration</param>
         /// <returns>List of entitlement groups objects matching selected criteria.</returns>
         /// <exception cref="ZentitleManagementApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<PaginatedListOfEntitlementGroupListModel> EntitlementGroup_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? expand, System.Threading.CancellationToken cancellationToken)
+        public virtual async System.Threading.Tasks.Task<PaginatedListOfEntitlementGroupListModel> EntitlementGroup_GetListAsync(int? pageNumber, int? pageSize, string? customerId, string? customerContactId, string? expand, System.Threading.CancellationToken cancellationToken)
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -17847,6 +17859,10 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
                     if (customerId != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("customerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(customerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (customerContactId != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("customerContactId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(customerContactId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (expand != null)
                     {
@@ -33095,6 +33111,9 @@ namespace NalpeironGrowthPlatformDemo.Nalpeiron.Zentitle.Generated
 
         [System.Runtime.Serialization.EnumMember(Value = @"insight")]
         Insight = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"zenmeterSubscription")]
+        ZenmeterSubscription = 4,
 
     }
 

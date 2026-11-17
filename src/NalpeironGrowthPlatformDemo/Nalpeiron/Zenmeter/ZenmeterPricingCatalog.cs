@@ -26,10 +26,12 @@ public sealed record ZenmeterTierPricing(
 public sealed record ZenmeterOfferingPricing(
     ZenmeterOfferingPeriod Period,
     string Sku,
-    bool IsTrial,
     bool IsVisible,
     int Price,
-    string BillingLabel);
+    string BillingLabel)
+{
+    public int? TrialDays { get; init; }
+}
 
 public sealed record ZenmeterAddonPricing(
     string Sku,
@@ -101,7 +103,8 @@ public interface IZenmeterPricingCatalog
 public sealed class ZenmeterPricingCatalog(
     IZenmeterManagementClient client,
     IOptions<ZenmeterOptions> options,
-    IBillingPriceResolver priceResolver) : IZenmeterPricingCatalog
+    IBillingPriceResolver priceResolver,
+    ILogger<ZenmeterPricingCatalog> logger) : IZenmeterPricingCatalog
 {
     public async Task<ZenmeterCatalogPricing> GetPricingShell(CancellationToken cancellationToken)
     {
@@ -309,12 +312,37 @@ public sealed class ZenmeterPricingCatalog(
         return new ZenmeterOfferingPricing(
             Period: period,
             Sku: offering.Sku,
-            IsTrial: false,
             IsVisible: prices is null || configuredPrice is not null,
             Price: configuredPrice?.Price ?? 0,
             BillingLabel: prices is null || configuredPrice is not null
                 ? BillingLabel(period)
-                : "price not configured");
+                : "price not configured")
+        {
+            TrialDays = ResolveTrialDays(offering)
+        };
+    }
+
+    private int? ResolveTrialDays(TierOfferingModel offering)
+    {
+        if (offering.TrialConfiguration is not { Enabled: true } trial)
+        {
+            return null;
+        }
+
+        int? days = trial.Duration switch
+        {
+            TrialDuration._7d => 7,
+            TrialDuration._14d => 14,
+            TrialDuration._30d => 30,
+            _ => null
+        };
+        if (days is null)
+        {
+            logger.LogWarning("Trial disabled in the demo for offering {Sku}: unsupported or missing duration {TrialDuration}.",
+                offering.Sku, trial.Duration);
+        }
+
+        return days;
     }
 
     private IReadOnlyList<ZenmeterAddonPricing> BuildAddons(

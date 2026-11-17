@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using NalpeironGrowthPlatformDemo.Nalpeiron.Zenmeter;
 using NalpeironGrowthPlatformDemo.Application.Zenmeter.BillingCheckoutProviders;
 using NalpeironGrowthPlatformDemo.Configuration;
 
@@ -79,6 +80,8 @@ public sealed record ZenmeterPendingCheckout(
     string OrderRefId,
     IReadOnlyList<string> Skus)
 {
+    public ZenmeterSubscriptionStartMode StartMode { get; init; }
+    public int? TrialDays { get; init; }
     public BillingCheckoutPurpose Purpose { get; init; } = BillingCheckoutPurpose.SubscriptionPurchase;
     public string? OperationId { get; init; }
     public string? TargetSubscriptionId { get; init; }

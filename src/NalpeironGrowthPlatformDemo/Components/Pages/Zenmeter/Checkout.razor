@@ -58,6 +58,10 @@
                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"/>
             </label>
             <ValidationMessage For="() => _input.UserEmail" class="mt-1 block text-sm text-rose-600"/>
+            @if (_billingSystem == BillingSystem.FastSpring)
+            {
+                <p class="mt-2 text-sm text-slate-500">Use a different email for each separate demo customer. FastSpring groups purchases made with the same email into one account.</p>
+            }
         </fieldset>
 
         @if (!string.IsNullOrEmpty(_error))
@@ -78,6 +82,8 @@
 </main>
 
 @code {
+    [SupplyParameterFromQuery] public bool Trial { get; set; }
+    private ZenmeterSubscriptionStartMode StartMode => Trial ? ZenmeterSubscriptionStartMode.Trial : ZenmeterSubscriptionStartMode.Paid;
     [SupplyParameterFromQuery] public string? Sku { get; set; }
     [Parameter] public string? BillingProvider { get; set; }
     [SupplyParameterFromQuery] public string? TierKey { get; set; }
@@ -97,7 +103,7 @@
     private PersistingComponentStateSubscription _persistingSubscription;
 
     private string StateKey =>
-        $"zenmeter-checkout-{_billingSystem.ToSlug()}-{Sku}-{TierKey}-{BillingPeriod}-{RequestedAddonSku}";
+        $"zenmeter-checkout-{_billingSystem.ToSlug()}-{Sku}-{TierKey}-{BillingPeriod}-{RequestedAddonSku}-{Trial}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -128,7 +134,7 @@
         ZenmeterCheckoutInfo? info;
         try
         {
-            info = await Demo.GetCheckoutInfo(_billingSystem, sku, RequestedAddonSku, CancellationToken.None);
+            info = await Demo.GetCheckoutInfo(_billingSystem, sku, RequestedAddonSku, CancellationToken.None, StartMode);
         }
         catch (Exception ex)
         {
@@ -177,7 +183,8 @@
                     _input.UserLastName,
                     _input.UserEmail),
                 _input.CheckoutRequestId,
-                CancellationToken.None);
+                CancellationToken.None,
+                StartMode);
             if (result.Error is not null || result.SessionId is null)
             {
                 _error = result.Error ?? "Purchase failed.";
@@ -245,7 +252,7 @@
         var tier = pricing.Tiers.FirstOrDefault(candidate =>
             string.Equals(candidate.Key, TierKey, StringComparison.OrdinalIgnoreCase));
         return tier?.Offerings.FirstOrDefault(offering =>
-            offering is { IsVisible: true, IsTrial: false } && offering.Period == period)?.Sku;
+            offering is { IsVisible: true } && offering.Period == period)?.Sku;
     }
 
     private string? RequestedAddonSku
@@ -267,7 +274,7 @@
         (skus ?? string.Empty)
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private string SubmitLabel => _billingSystem == BillingSystem.None
+    private string SubmitLabel => Trial ? "Start free trial" : _billingSystem == BillingSystem.None
         ? "Create subscription"
         : "Buy subscription";
 
